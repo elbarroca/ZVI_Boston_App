@@ -1,17 +1,19 @@
 // app/(auth)/index.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoogleSignIn, signInWithEmail, signUpWithEmail } from '@/lib/auth'; // Centralize auth functions
 
-// You can download a Google logo SVG and put it in your assets folder
-// For now, let's use a placeholder URI
-const GOOGLE_ICON_URI = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgZmlsbD0ibm9uZSIgZmlsbD1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNMTcuNiA5LjJsLS4xLTEuOEg5djMuNGg0LjhDMTMuNiAxMiAxMyAxMyAxMiAxMy42djIuNmgzLjFjMS44LTEuNyAyLjgtNCAyLjgtNi40eiIgZmlsbD0iIzQyODVGNCIgZmlsbD1ydWxlPSJub256ZXJvIi8+PHBhdGggZD0iTTkgMThjMi40IDAgNC41LS44IDYtMi4xbC0zLjEtMi42Yy0uOC41LTEuOC45LTMgLjktMi4yIDAtNC0xLjUtNC43LTMuNUgxbDIuMSA0LjZjMS4yIDIuOCA0LjEgNC44IDcuMSA0Ljh6IiBmaWxsPSIjMzRBODUzIiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNNCAxMC43YzAtLjYgMC0xLjEuMS0xLjZoLTNWN2MtLjQgMS0uNiAyLS42IDN2LjVjMCAxIC4yIDIgLjYgMyAwIC4xIDIuMi0xLjYgMi4yLTEuNnoiIGZpbGw9IiNGQkJDMDQiIGZpbGwtcnVsZT0ibm9uemVybyIvPjxwYXRoIGQ9Ik05IDMuNmMxLjMgMCAyLjMtLjUgMy0xLjRsMi43LTIuN0MxMy41LjYgMTEuNSAwIDkgMGMzIDAgNS44IDIgNy4xIDQuOGwtMy4yIDIuNmMtLjctMi0yLjUtMy41LTQuOC0zLjV6IiBmaWxsPSIjRUE0MzM1IiBmaWxsLXJ1bGU9Im5vbnplcm8iLz48cGF0aCBkPSJNMCAwaDE4djE4SDB6Ii8+PC9nPjwvc3ZnPg==';
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Google logo - using local asset for better reliability
+const GOOGLE_ICON_URI = require('../../assets/google-logo.svg');
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [googleIconError, setGoogleIconError] = useState(false);
   const router = useRouter();
 
   const { signInWithGoogle } = useGoogleSignIn();
@@ -57,7 +59,18 @@ export default function AuthScreen() {
             }
           }}
         >
-          <Image source={{ uri: GOOGLE_ICON_URI }} style={styles.icon} />
+          {!googleIconError ? (
+            <Image
+              source={GOOGLE_ICON_URI}
+              style={styles.icon}
+              onError={() => {
+                console.log('Google icon failed to load, using fallback');
+                setGoogleIconError(true);
+              }}
+            />
+          ) : (
+            <Text style={[styles.icon, styles.fallbackIcon]}>G</Text>
+          )}
           <Text style={styles.googleButtonText}>Continue with Google</Text>
         </Pressable>
 
@@ -90,22 +103,159 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#FFFFFF' },
-  headerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  formContainer: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', width: '100%' },
-  header: { fontSize: 48, fontWeight: 'bold', color: '#1A1A1A' },
-  subHeader: { fontSize: 18, color: '#6B7280', marginTop: 8, maxWidth: 250, textAlign: 'center' },
-  input: { backgroundColor: '#F3F4F6', padding: 16, borderRadius: 12, fontSize: 16, marginBottom: 16, width: '100%', borderWidth: 1, borderColor: '#E5E7EB' },
-  button: { flexDirection: 'row', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', width: '100%', transitionDuration: '300ms' },
-  buttonPressed: { opacity: 0.8 },
-  googleButton: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB' },
-  googleButtonHovered: { backgroundColor: '#F9FAFB' },
-  googleButtonText: { color: '#374151', fontSize: 16, fontWeight: '600', marginLeft: 12 },
-  emailButton: { backgroundColor: '#00A896' },
-  emailButtonHovered: { backgroundColor: '#008778' },
-  emailButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  icon: { width: 18, height: 18 },
-  orText: { color: '#6B7280', textAlign: 'center', marginVertical: 24 },
-  footerText: { marginTop: 24, textAlign: 'center', color: '#6B7280' },
-  linkText: { color: '#00A896', fontWeight: '600' },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Platform.OS === 'web' ? Math.max(32, screenWidth * 0.05) : 24,
+    paddingVertical: Platform.OS === 'web' ? Math.max(32, screenHeight * 0.05) : 24,
+    backgroundColor: '#FFFFFF',
+    minHeight: screenHeight,
+    width: '100%'
+  },
+  headerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Platform.OS === 'web' ? 60 : 40,
+    width: '100%',
+    maxWidth: 400
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 420 : screenWidth * 0.9,
+    paddingHorizontal: Platform.OS === 'web' ? 0 : 16
+  },
+  header: {
+    fontSize: Platform.OS === 'web' ? 56 : screenWidth < 400 ? 44 : 52,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    letterSpacing: -1,
+    textAlign: 'center',
+    lineHeight: Platform.OS === 'web' ? 64 : screenWidth < 400 ? 48 : 58
+  },
+  subHeader: {
+    fontSize: Platform.OS === 'web' ? 20 : screenWidth < 400 ? 16 : 18,
+    color: '#6B7280',
+    marginTop: 12,
+    maxWidth: 320,
+    textAlign: 'center',
+    lineHeight: Platform.OS === 'web' ? 28 : screenWidth < 400 ? 22 : 24
+  },
+  input: {
+    backgroundColor: '#F8FAFC',
+    padding: Platform.OS === 'web' ? 20 : 18,
+    borderRadius: 16,
+    fontSize: Platform.OS === 'web' ? 17 : 16,
+    marginBottom: 16,
+    width: '100%',
+    borderWidth: 2,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    minHeight: Platform.OS === 'web' ? 52 : 48
+  },
+  button: {
+    flexDirection: 'row',
+    paddingVertical: Platform.OS === 'web' ? 18 : 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    minHeight: Platform.OS === 'web' ? 56 : 52,
+    maxWidth: Platform.OS === 'web' ? 420 : screenWidth * 0.85
+  },
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.05
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  googleButtonHovered: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    shadowOpacity: 0.15
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: Platform.OS === 'web' ? 17 : 16,
+    fontWeight: '600',
+    marginLeft: 12,
+    letterSpacing: 0.5,
+    textAlign: 'center'
+  },
+  emailButton: {
+    backgroundColor: '#00A896',
+    borderWidth: 0,
+    marginTop: 8,
+    shadowColor: '#00A896',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6
+  },
+  emailButtonHovered: {
+    backgroundColor: '#008778',
+    shadowOpacity: 0.3
+  },
+  emailButtonText: {
+    color: '#FFFFFF',
+    fontSize: Platform.OS === 'web' ? 17 : 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textAlign: 'center'
+  },
+  icon: {
+    width: Platform.OS === 'web' ? 22 : 20,
+    height: Platform.OS === 'web' ? 22 : 20
+  },
+  fallbackIcon: {
+    fontSize: Platform.OS === 'web' ? 22 : 20,
+    fontWeight: '700',
+    color: '#4285F4',
+    textAlign: 'center',
+    lineHeight: Platform.OS === 'web' ? 22 : 20
+  },
+  orText: {
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginVertical: Platform.OS === 'web' ? 32 : 24,
+    fontSize: Platform.OS === 'web' ? 15 : 14,
+    fontWeight: '500',
+    letterSpacing: 1
+  },
+  footerText: {
+    marginTop: Platform.OS === 'web' ? 40 : 32,
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: Platform.OS === 'web' ? 16 : 15,
+    lineHeight: Platform.OS === 'web' ? 24 : 22
+  },
+  linkText: {
+    color: '#00A896',
+    fontWeight: '700',
+    textDecorationLine: 'underline'
+  }
 });
