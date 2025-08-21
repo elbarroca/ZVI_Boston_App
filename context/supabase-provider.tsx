@@ -1,115 +1,52 @@
-import { Session, User } from "@supabase/supabase-js";
-import { useRouter, useSegments, SplashScreen } from "expo-router";
-import { createContext, useContext, useEffect, useState } from "react";
+// context/supabase-provider.tsx
+import { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/config/supabase';
+import { Session } from '@supabase/supabase-js';
 
-import { supabase } from "@/config/supabase";
-
-SplashScreen.preventAutoHideAsync();
-
-type SupabaseContextProps = {
-	user: User | null;
-	session: Session | null;
-	initialized?: boolean;
-	signUp: (email: string, password: string) => Promise<void>;
-	signInWithPassword: (email: string, password: string) => Promise<void>;
-	signOut: () => Promise<void>;
+// Define the context shape
+type AuthContextType = {
+  session: Session | null;
+  isLoading: boolean;
 };
 
-type SupabaseProviderProps = {
-	children: React.ReactNode;
-};
-
-export const SupabaseContext = createContext<SupabaseContextProps>({
-	user: null,
-	session: null,
-	initialized: false,
-	signUp: async () => {},
-	signInWithPassword: async () => {},
-	signOut: async () => {},
+// Create the context
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  isLoading: true,
 });
 
-export const useSupabase = () => useContext(SupabaseContext);
+// Export a custom hook for easy access
+export const useSupabaseAuth = () => useContext(AuthContext);
 
-export const SupabaseProvider = ({ children }: SupabaseProviderProps) => {
-	const router = useRouter();
-	const segments = useSegments();
-	const [user, setUser] = useState<User | null>(null);
-	const [session, setSession] = useState<Session | null>(null);
-	const [initialized, setInitialized] = useState<boolean>(false);
+// The provider component itself
+export function SupabaseProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-	const signUp = async (email: string, password: string) => {
-		const { error } = await supabase.auth.signUp({
-			email,
-			password,
-		});
-		if (error) {
-			throw error;
-		}
-	};
+  useEffect(() => {
+    // 1. Check for an initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('SupabaseProvider: Initial session loaded', !!session);
+      setSession(session);
+      setIsLoading(false);
+    });
 
-	const signInWithPassword = async (email: string, password: string) => {
-		const { error } = await supabase.auth.signInWithPassword({
-			email,
-			password,
-		});
-		if (error) {
-			throw error;
-		}
-	};
+    // 2. Listen for any future changes in auth state
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        console.log('SupabaseProvider: Auth state changed', _event, !!session);
+        setSession(session);
+      }
+    );
 
-	const signOut = async () => {
-		const { error } = await supabase.auth.signOut();
-		if (error) {
-			throw error;
-		}
-	};
+    // 3. Clean up the subscription on unmount
+    return () => subscription.unsubscribe();
+  }, []);
 
-	useEffect(() => {
-		supabase.auth.getSession().then(({ data: { session } }) => {
-			setSession(session);
-			setUser(session ? session.user : null);
-			setInitialized(true);
-		});
+  const value = {
+    session,
+    isLoading,
+  };
 
-		supabase.auth.onAuthStateChange((_event, session) => {
-			setSession(session);
-			setUser(session ? session.user : null);
-		});
-	}, []);
-
-	useEffect(() => {
-		if (!initialized) return;
-
-		const inProtectedGroup = segments[0] === "(protected)";
-
-		if (session && !inProtectedGroup) {
-			router.replace("/(app)/(protected)/");
-		} else if (!session) {
-			router.replace("/(app)/welcome");
-		}
-
-		/* HACK: Something must be rendered when determining the initial auth state... 
-		instead of creating a loading screen, we use the SplashScreen and hide it after
-		a small delay (500 ms)
-		*/
-
-		setTimeout(() => {
-			SplashScreen.hideAsync();
-		}, 500);
-	}, [initialized, session]);
-
-	return (
-		<SupabaseContext.Provider
-			value={{
-				user,
-				session,
-				initialized,
-				signUp,
-				signInWithPassword,
-				signOut,
-			}}
-		>
-			{children}
-		</SupabaseContext.Provider>
-	);
-};
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
