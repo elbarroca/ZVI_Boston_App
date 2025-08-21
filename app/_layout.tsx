@@ -1,5 +1,9 @@
+import 'react-native-gesture-handler'; // Must be at the very top for Reanimated
+
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { SupabaseProvider, useSupabaseAuth } from '@/context/supabase-provider';
+import { ThemeProvider } from '@/context/theme-provider';
+import { LanguageProvider } from '@/context/language-provider';
 import { useEffect } from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
@@ -109,10 +113,14 @@ const InitialLayout = () => {
 
 export default function RootLayout() {
   return (
-    <SupabaseProvider>
-      <QueryClientProvider client={queryClient}>
-        <InitialLayout />
-      </QueryClientProvider>
-    </SupabaseProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <SupabaseProvider>
+          <QueryClientProvider client={queryClient}>
+            <InitialLayout />
+          </QueryClientProvider>
+        </SupabaseProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }

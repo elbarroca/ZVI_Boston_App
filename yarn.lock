@@ -1606,12 +1606,10 @@
   dependencies:
     cross-spawn "^7.0.3"
 
-"@expo/vector-icons@^14.0.0":
-  version "14.0.4"
-  resolved "https://registry.npmjs.org/@expo/vector-icons/-/vector-icons-14.0.4.tgz"
-  integrity sha512-+yKshcbpDfbV4zoXOgHxCwh7lkE9VVTT5T03OUlBsqfze1PLy6Hi4jp1vSb1GVbY6eskvMIivGVc9SKzIv0oEQ==
-  dependencies:
-    prop-types "^15.8.1"
+"@expo/vector-icons@^14.0.0", "@expo/vector-icons@^14.1.0":
+  version "14.1.0"
+  resolved "https://registry.npmjs.org/@expo/vector-icons/-/vector-icons-14.1.0.tgz"
+  integrity sha512-7T09UE9h8QDTsUeMGymB4i+iqvtEeaO5VvUjryFB4tugDTG/bkzViWA74hm5pfjjDEhYMXWaX112mcvhccmIwQ==
 
 "@expo/xcpretty@^4.3.0":
   version "4.3.1"
@@ -1851,6 +1849,13 @@
   integrity sha512-Qd2kQ3yi6Y3+AcUlrHxSLlnBvpdCEMVGFlVBneVOjaFaPU61g1huc38g339ysXspwY1QZA2aNhrk/KlHGO+ewA==
   dependencies:
     merge-options "^3.0.4"
+
+"@react-native-community/datetimepicker@^8.4.4":
+  version "8.4.4"
+  resolved "https://registry.npmjs.org/@react-native-community/datetimepicker/-/datetimepicker-8.4.4.tgz"
+  integrity sha512-bc4ZixEHxZC9/qf5gbdYvIJiLZ5CLmEsC3j+Yhe1D1KC/3QhaIfGDVdUcid0PdlSoGOSEq4VlB93AWyetEyBSQ==
+  dependencies:
+    invariant "^2.2.4"
 
 "@react-native/assets-registry@0.76.9":
   version "0.76.9"
@@ -4650,7 +4655,7 @@ expo-file-system@~18.0.2:
   resolved "https://registry.npmjs.org/expo-file-system/-/expo-file-system-18.0.2.tgz"
   integrity sha512-6Tt2LFk5zWZaDCwCQcFwICuoc/MJPr3BchDuFvBccQ+9bFN0vWqSvpUpcLGHXCKHFTZdDpc6zLuqH+5iAdcZiA==
 
-expo-font@~13.0.1:
+expo-font@*, expo-font@~13.0.1:
   version "13.0.1"
   resolved "https://registry.npmjs.org/expo-font/-/expo-font-13.0.1.tgz"
   integrity sha512-8JE47B+6cLeKWr5ql8gU6YsPHjhrz1vMrTqYMm72No/8iW8Sb/uL4Oc0dpmbjq3hLLXBY0xPBQOgU7FQ6Y04Vg==
@@ -4737,7 +4742,7 @@ expo-web-browser@~14.0.2:
   resolved "https://registry.npmjs.org/expo-web-browser/-/expo-web-browser-14.0.2.tgz"
   integrity sha512-Hncv2yojhTpHbP6SGWARBFdl7P6wBHc1O8IKaNsH0a/IEakq887o1eRhLxZ5IwztPQyRDhpqHdgJ+BjWolOnwA==
 
-expo@*, expo@~52.0.3:
+expo@*, expo@>=52.0.0, expo@~52.0.3:
   version "52.0.3"
   resolved "https://registry.npmjs.org/expo/-/expo-52.0.3.tgz"
   integrity sha512-AF6fMK6+lqWgwf81NDFfuAgVNAerR1V5oUSYyOTY7uClBsPzQM6jJnPWbEicbhde2q+HOI0k0KBFgptzyYA5Ag==
