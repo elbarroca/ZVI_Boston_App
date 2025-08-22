@@ -4,10 +4,8 @@ import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Image, Pressable
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getListingById, saveListing, unsaveListing, createTourRequest, createTourRequestWithValidation, getUserProfile, updateUserProfile, checkExistingTourRequest } from '@/lib/api';
-import { TestImageCarousel } from '@/components/ImageCarousel';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
-import { colors as themeColorsObj } from '@/constants/colors';
 import { useLanguage, TranslationKey } from '@/context/language-provider';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/config/supabase';
@@ -180,6 +178,12 @@ export default function ListingDetailScreen() {
       console.log('📊 Tour request created successfully');
       setModalVisible(false);
 
+      // Invalidate and refetch tour requests query to update the settings page immediately
+      queryClient.invalidateQueries({ queryKey: ['tour-requests', user?.id] });
+
+      // Also invalidate the existing tour query to update the UI state
+      queryClient.invalidateQueries({ queryKey: ['existing-tour', user?.id, id] });
+
       // Show confirmation modal with submitted data (including notes)
       setSubmittedTourData(data);
       // Add small delay to ensure smooth modal transition
@@ -263,6 +267,13 @@ export default function ListingDetailScreen() {
       } else {
         await saveListing(user.id, id);
       }
+
+      // Invalidate and refetch saved listings query to update the saved page immediately
+      queryClient.invalidateQueries({ queryKey: ['saved-listings'] });
+
+      // Also invalidate the main listings query to update any saved status in the feed
+      queryClient.invalidateQueries({ queryKey: ['listings'] });
+
     } catch (error) {
       // Revert on error
       setIsSaved(currentlySaved);
