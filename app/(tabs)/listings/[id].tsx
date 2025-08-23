@@ -1,9 +1,10 @@
 // app/(tabs)/listings/[id].tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Image, Pressable, Alert, useWindowDimensions, I18nManager } from 'react-native';
+import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Image, Pressable, Alert, useWindowDimensions, I18nManager, Share } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getListingById, saveListing, unsaveListing, createTourRequest, createTourRequestWithValidation, getUserProfile, updateUserProfile, checkExistingTourRequest } from '@/lib/api';
+import { getListingById, getListingBySlugOrId, saveListing, unsaveListing, createTourRequest, createTourRequestWithValidation, getUserProfile, updateUserProfile, checkExistingTourRequest } from '@/lib/api';
+import { createListingUrl } from '@/lib/utils';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage, TranslationKey } from '@/context/language-provider';
@@ -16,7 +17,8 @@ import { TourConfirmationModal } from '@/components/TourConfirmationModal';
 import { TourRequestData, TourConfirmationData } from '@/components/types/tour';
 
 export default function ListingDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
+  const { id: slugOrId } = params;
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const { t } = useLanguage();
@@ -32,18 +34,23 @@ export default function ListingDetailScreen() {
 
   // Debug: Track renders (only once)
   const hasLogged = useRef(false);
-  if (__DEV__ && !hasLogged.current) {
-    hasLogged.current = true;
-    console.log('=== ListingDetailScreen First Mount ===');
-    console.log('ID:', id);
-    console.log('Theme:', theme);
-    console.log('========================');
-  }
+  useEffect(() => {
+    if (__DEV__ && !hasLogged.current) {
+      hasLogged.current = true;
+      console.log('=== ListingDetailScreen First Mount ===');
+      console.log('Raw params:', params);
+      console.log('SlugOrId:', slugOrId);
+      console.log('SlugOrId type:', typeof slugOrId);
+      console.log('SlugOrId length:', slugOrId?.length);
+      console.log('Theme:', theme);
+      console.log('========================');
+    }
+  }, [params, slugOrId, theme]);
 
   const { data: listing, isLoading, error } = useQuery({
-    queryKey: ['listing', id],
-    queryFn: () => getListingById(id!),
-    enabled: !!id,
+    queryKey: ['listing', slugOrId],
+    queryFn: () => getListingBySlugOrId(slugOrId!),
+    enabled: !!slugOrId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
@@ -68,9 +75,9 @@ export default function ListingDetailScreen() {
 
   // Check for existing tour requests
   const { data: existingTour } = useQuery({
-    queryKey: ['existing-tour', user?.id, id],
-    queryFn: () => checkExistingTourRequest(user!.id, id!),
-    enabled: !!user && !!id,
+    queryKey: ['existing-tour', user?.id, slugOrId],
+    queryFn: () => checkExistingTourRequest(user!.id, listing?.id!),
+    enabled: !!user && !!slugOrId && !!listing?.id,
   });
 
 
@@ -115,7 +122,7 @@ export default function ListingDetailScreen() {
 
     // First, check if user already has an active tour request
     try {
-      const existingTour = await checkExistingTourRequest(user.id, id!);
+      const existingTour = await checkExistingTourRequest(user.id, listing?.id!);
       if (existingTour) {
         const tourDate = new Date(existingTour.created_at).toLocaleDateString();
         Alert.alert(
@@ -182,7 +189,7 @@ export default function ListingDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['tour-requests', user?.id] });
 
       // Also invalidate the existing tour query to update the UI state
-      queryClient.invalidateQueries({ queryKey: ['existing-tour', user?.id, id] });
+      queryClient.invalidateQueries({ queryKey: ['existing-tour', user?.id, slugOrId] });
 
       // Show confirmation modal with submitted data (including notes)
       setSubmittedTourData(data);
@@ -210,16 +217,16 @@ export default function ListingDetailScreen() {
     return urls;
   }, [listing?.image_urls]); // Only depend on image URLs
 
-  // Reset saved status and check flag when ID changes
+  // Reset saved status and check flag when slugOrId changes
   useEffect(() => {
     setIsSaved(false);
     hasCheckedSavedStatus.current = false;
-  }, [id]);
+  }, [slugOrId]);
 
   // Check saved status when listing loads
   useEffect(() => {
     const checkSavedStatus = async () => {
-      if (!id || !listing?.id || hasCheckedSavedStatus.current) return;
+      if (!listing?.id || hasCheckedSavedStatus.current) return;
 
       hasCheckedSavedStatus.current = true; // Mark as checked
 
@@ -231,7 +238,7 @@ export default function ListingDetailScreen() {
           .from('saved_listings')
           .select('id')
           .eq('user_id', user.id)
-          .eq('listing_id', id)
+          .eq('listing_id', listing.id)
           .single();
 
         if (data && !error) {
@@ -246,10 +253,10 @@ export default function ListingDetailScreen() {
     };
 
     checkSavedStatus();
-  }, [id, listing?.id]); // This will only run when id or listing.id changes
+  }, [slugOrId, listing?.id]); // This will only run when slugOrId or listing.id changes
 
   const handleToggleSave = async () => {
-    if (!id || !listing) return;
+    if (!listing?.id || !listing) return;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -263,9 +270,9 @@ export default function ListingDetailScreen() {
 
     try {
       if (currentlySaved) {
-        await unsaveListing(user.id, id);
+        await unsaveListing(user.id, listing.id);
       } else {
-        await saveListing(user.id, id);
+        await saveListing(user.id, listing.id);
       }
 
       // Invalidate and refetch saved listings query to update the saved page immediately
@@ -301,7 +308,39 @@ export default function ListingDetailScreen() {
       return;
     }
 
+    if (!listing?.id) {
+      Alert.alert(t('error'), t('listingNotFound'));
+      return;
+    }
+
     setModalVisible(true);
+  };
+
+  const handleShare = async () => {
+    if (!listing) return;
+
+    try {
+      const listingUrl = `${window.location.origin || 'http://localhost:8081'}/listings/${createListingUrl(listing.title, listing.id)}`;
+      const message = `Check out this ${listing.property_type}: ${listing.title} - ${listing.location_address}. ${listingUrl}`;
+
+      const result = await Share.share({
+        message,
+        url: listingUrl, // For iOS
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // Shared with activity type of result.activityType
+        } else {
+          // Shared
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // Dismissed
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      Alert.alert(t('error'), 'Could not share listing. Please try again.');
+    }
   };
 
   // Helper function to translate amenity values
@@ -368,8 +407,8 @@ export default function ListingDetailScreen() {
 
 
 
-  // Handle case where no ID is provided
-  if (!id) {
+  // Handle case where no slugOrId is provided
+  if (!slugOrId) {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>{t('invalidListingId')}</Text>
@@ -409,13 +448,12 @@ export default function ListingDetailScreen() {
           <Pressable
             onPress={handleToggleSave}
             disabled={isSaveLoading}
-            style={[styles.heartButton, { backgroundColor: colors.shadow }]}
+            style={[styles.saveButton, { backgroundColor: colors.shadow }]}
           >
             <Ionicons
               name={isSaved ? 'heart' : 'heart-outline'}
               size={32}
               color={colors.text}
-              style={styles.heartIcon}
             />
           </Pressable>
         </View>
@@ -485,7 +523,7 @@ export default function ListingDetailScreen() {
       <TourRequestModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
-        listingId={id!}
+        listingId={listing?.id!}
         listingTitle={listing?.title || ''}
         listingAddress={listing?.location_address || ''}
         userEmail={user?.email}
@@ -509,18 +547,26 @@ export default function ListingDetailScreen() {
       />
 
       <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
-        <Pressable
-          style={[
-            styles.requestButton,
-            { backgroundColor: existingTour ? colors.textMuted : colors.primary }
-          ]}
-          onPress={handleRequestTour}
-          disabled={!!existingTour}
-        >
-          <Text style={styles.requestButtonText}>
-            🏠 {existingTour ? t('tourAlreadyRequested') : t('requestTour')}
-          </Text>
-        </Pressable>
+        <View style={styles.footerButtonsContainer}>
+          <Pressable
+            style={[
+              styles.requestButton,
+              { backgroundColor: existingTour ? colors.textMuted : colors.primary }
+            ]}
+            onPress={handleRequestTour}
+            disabled={!!existingTour}
+          >
+            <Text style={styles.requestButtonText}>
+              🏠 {existingTour ? t('tourAlreadyRequested') : t('requestTour')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.shareButton, { backgroundColor: colors.background }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={20} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
     </>
   );
@@ -560,7 +606,7 @@ const styles = StyleSheet.create({
   carouselContainer: {
     position: 'relative',
   },
-  heartButton: {
+  saveButton: {
     position: 'absolute',
     top: 20,
     right: 20,
@@ -574,9 +620,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-  },
-  heartIcon: {
-    // Additional styling for heart icon if needed
   },
   content: {
     padding: 20,
@@ -669,7 +712,13 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
   },
+  footerButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
   requestButton: {
+    flex: 1,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -684,6 +733,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  shareButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   requestButtonDisabled: {
     opacity: 0.7,

@@ -571,3 +571,28 @@ class PersistentImageCache {
 
 // Global instance
 export const persistentImageCache = new PersistentImageCache();
+
+// Slug generation utility
+export function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    // Remove special characters and replace with spaces
+    .replace(/[^\w\s-]/g, '')
+    // Replace spaces and underscores with hyphens
+    .replace(/[\s_]+/g, '-')
+    // Remove multiple consecutive hyphens
+    .replace(/-+/g, '-')
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, '');
+}
+
+// Create URL-friendly slug with ID fallback
+export function createListingUrl(title: string, id: string): string {
+  const slug = generateSlug(title);
+  // If slug is empty or too short, use ID
+  if (!slug || slug.length < 3) {
+    return id;
+  }
+  return slug;
+}

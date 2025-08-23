@@ -10,7 +10,7 @@ import { useTheme } from '@/context/theme-provider';
 import { useLanguage, TranslationKey } from '@/context/language-provider';
 import { themeColors, spacing, typography, borderRadius, createShadow } from '@/constants/theme';
 import { saveListing, unsaveListing } from '@/lib/api';
-import { imageCache, persistentImageCache } from '@/lib/utils';
+import { imageCache, persistentImageCache, createListingUrl } from '@/lib/utils';
 import { LazyImage } from '@/components/ImageCarousel';
 
 export type Listing = {
@@ -124,11 +124,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       borderRadius: borderRadius.xl,
       ...createShadow(2)
     }]}>
-      <Link href={`/(tabs)/listings/${listing.id}`} asChild>
+      <Link href={`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`} asChild>
         <Pressable
           onPressIn={preloadDetailImages} // Start preloading immediately on press
           onPress={() => {
-            if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id}`);
+            if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
           }}
         >
           <LazyImage
@@ -147,8 +147,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       </Link>
       <View style={[styles.infoContainer, { borderTopColor: colors.border }]}>
         <View style={styles.detailsRow}>
-          <Link href={`/(tabs)/listings/${listing.id}`} asChild>
-            <Pressable style={{ flex: 1 }}>
+                        <Link href={`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`} asChild>
+                <Pressable style={{ flex: 1 }}>
               <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{listing.title}</Text>
 
               {/* Property Type Badge */}

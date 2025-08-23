@@ -177,6 +177,188 @@ export const getListingById = async (id: string) => {
   return result;
 };
 
+// Get listing by slug or ID - tries slug first, then falls back to ID
+export const getListingBySlugOrId = async (slugOrId: string) => {
+  if (__DEV__) {
+    console.log('=== getListingBySlugOrId Debug ===');
+    console.log('Input slugOrId:', slugOrId);
+    console.log('Input type:', typeof slugOrId);
+    console.log('Input length:', slugOrId?.length);
+  }
+
+  if (!slugOrId) return null;
+
+  // First try to find by ID (for backward compatibility)
+  let { data, error } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('id', slugOrId)
+    .single();
+
+  if (__DEV__) {
+    console.log('First attempt (by ID):', { data: !!data, error });
+  }
+
+  // If found by ID, return it
+  if (data && !error) {
+    // Ensure image_urls is always an array
+    return {
+      ...data,
+      image_urls: data.image_urls || []
+    };
+  }
+
+  // If not found by ID, try to find by title slug
+  if (__DEV__) {
+    console.log('Attempting slug search...');
+    console.log('Original slug:', slugOrId);
+
+    // Debug: Let's see what listings contain keywords from our slug
+    const debugSlugWords = slugOrId.replace(/-/g, ' ').split(' ').filter(word => word.length > 3);
+    console.log('Debug keywords to search:', debugSlugWords);
+
+    if (debugSlugWords.length > 0) {
+      const debugQuery = supabase.from('listings').select('title, id').ilike('title', `%${debugSlugWords[0]}%`);
+      debugQuery.then(result => {
+        console.log(`Debug: Listings containing "${debugSlugWords[0]}":`, result.data?.length || 0);
+        if (result.data && result.data.length > 0) {
+          result.data.slice(0, 3).forEach(listing => {
+            console.log(`  - "${listing.title}" (${listing.id})`);
+          });
+        }
+      });
+    }
+  }
+
+  // Convert slug to search terms and try multiple approaches
+  const searchTerms = slugOrId.replace(/-/g, ' ').split(' ').filter(term => term.length > 2);
+
+  if (__DEV__) {
+    console.log('Search terms extracted:', searchTerms);
+  }
+
+  // First, try exact title match (most specific)
+  let { data: listings, error: slugError } = await supabase
+    .from('listings')
+    .select('*')
+    .eq('title', slugOrId.replace(/-/g, ' '));
+
+  if (__DEV__) {
+    console.log('Exact title match result:', { listingsCount: listings?.length, error: slugError });
+  }
+
+  // If exact match fails, try case-insensitive title search
+  if (!listings || listings.length === 0) {
+    if (__DEV__) {
+      console.log('Trying case-insensitive title search...');
+    }
+
+    const { data: titleListings, error: titleError } = await supabase
+      .from('listings')
+      .select('*')
+      .ilike('title', `%${slugOrId.replace(/-/g, ' ')}%`);
+
+    listings = titleListings;
+    slugError = titleError;
+
+    if (__DEV__) {
+      console.log('Case-insensitive title search result:', { listingsCount: listings?.length, error: slugError });
+    }
+  }
+
+  // If still no results, try searching for individual keywords
+  if (!listings || listings.length === 0) {
+    if (__DEV__) {
+      console.log('Trying keyword search...');
+    }
+
+    if (searchTerms.length > 0) {
+      // Use the most specific search terms first
+      const primaryTerm = searchTerms[0];
+      const { data: keywordListings, error: keywordError } = await supabase
+        .from('listings')
+        .select('*')
+        .ilike('title', `%${primaryTerm}%`);
+
+      listings = keywordListings;
+      slugError = keywordError;
+
+      if (__DEV__) {
+        console.log('Keyword search result:', { listingsCount: listings?.length, error: slugError, primaryTerm });
+      }
+    }
+  }
+
+  if (__DEV__) {
+    console.log('Final search result:', { listingsCount: listings?.length, error: slugError });
+    if (listings && listings.length > 0) {
+      console.log('Found listings titles:');
+      listings.forEach((listing, index) => {
+        console.log(`  ${index + 1}. "${listing.title}" (ID: ${listing.id})`);
+      });
+    }
+  }
+
+  if (slugError) {
+    throw new Error(slugError.message);
+  }
+
+  // If we found listings, return the first one that matches the slug pattern
+  if (listings && listings.length > 0) {
+    if (__DEV__) {
+      console.log('Found listings, checking for exact slug match...');
+    }
+
+    // Try to find exact slug match first
+    const exactMatch = listings.find(listing => {
+      const listingSlug = listing.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      return listingSlug === slugOrId;
+    });
+
+    if (__DEV__) {
+      console.log('Exact match found:', !!exactMatch);
+      if (exactMatch) {
+        console.log('Exact match ID:', exactMatch.id);
+        console.log('Exact match title:', exactMatch.title);
+      }
+    }
+
+    if (exactMatch) {
+      const result = {
+        ...exactMatch,
+        image_urls: exactMatch.image_urls || []
+      };
+      if (__DEV__) {
+        console.log('Returning exact match result');
+      }
+      return result;
+    }
+
+    // If no exact match, return the first listing as fallback
+    if (__DEV__) {
+      console.log('No exact match, using first listing as fallback');
+      console.log('Fallback listing ID:', listings[0].id);
+      console.log('Fallback listing title:', listings[0].title);
+    }
+    return {
+      ...listings[0],
+      image_urls: listings[0].image_urls || []
+    };
+  }
+
+  // If nothing found, throw error
+  if (__DEV__) {
+    console.log('No listings found, throwing error');
+  }
+  throw new Error('Listing not found');
+};
+
 // Save a listing for a user
 export const saveListing = async (userId: string, listingId: string) => {
   const { error } = await supabase
