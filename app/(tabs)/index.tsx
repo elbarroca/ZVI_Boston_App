@@ -17,12 +17,9 @@ interface FilterState {
   laundry: string;
   parking: boolean | undefined;
   pets_allowed: boolean | undefined;
-  property_type: string;
   is_furnished: boolean | undefined;
   utilities_included: boolean | undefined;
   broker_fee_required: boolean | undefined;
-  min_lease_duration: string;
-  max_lease_duration: string;
 }
 
 // Custom debounce hook
@@ -60,12 +57,9 @@ export default function FeedScreen() {
     laundry: '',
     parking: undefined,
     pets_allowed: undefined,
-    property_type: '',
     is_furnished: undefined,
     utilities_included: undefined,
-    broker_fee_required: undefined,
-    min_lease_duration: '',
-    max_lease_duration: ''
+    broker_fee_required: undefined
   });
 
   // Draft filters (used for UI inputs)
@@ -76,12 +70,9 @@ export default function FeedScreen() {
     laundry: '',
     parking: undefined,
     pets_allowed: undefined,
-    property_type: '',
     is_furnished: undefined,
     utilities_included: undefined,
-    broker_fee_required: undefined,
-    min_lease_duration: '',
-    max_lease_duration: ''
+    broker_fee_required: undefined
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -140,9 +131,6 @@ export default function FeedScreen() {
     if (appliedFilters.beds) {
       activeFilters.push(`${appliedFilters.beds} Bed${appliedFilters.beds === '4+' ? 's' : ''}`);
     }
-    if (appliedFilters.property_type) {
-      activeFilters.push(appliedFilters.property_type.charAt(0).toUpperCase() + appliedFilters.property_type.slice(1));
-    }
     if (appliedFilters.laundry) {
       activeFilters.push(`Laundry: ${appliedFilters.laundry === 'in-unit' ? 'In Unit' : appliedFilters.laundry === 'on-site' ? 'On Site' : 'None'}`);
     }
@@ -151,9 +139,6 @@ export default function FeedScreen() {
     if (appliedFilters.is_furnished) activeFilters.push('Furnished');
     if (appliedFilters.utilities_included) activeFilters.push('Utilities');
     if (appliedFilters.broker_fee_required === false) activeFilters.push('No Broker Fee');
-    if (appliedFilters.min_lease_duration || appliedFilters.max_lease_duration) {
-      activeFilters.push(`${appliedFilters.min_lease_duration || '1'}-${appliedFilters.max_lease_duration || '∞'} months`);
-    }
     return activeFilters;
   };
 
@@ -187,15 +172,6 @@ export default function FeedScreen() {
     } else if (filterText === 'No Broker Fee') {
       newAppliedFilters.broker_fee_required = undefined;
       newDraftFilters.broker_fee_required = undefined;
-    } else if (filterText.includes('months')) {
-      newAppliedFilters.min_lease_duration = '';
-      newAppliedFilters.max_lease_duration = '';
-      newDraftFilters.min_lease_duration = '';
-      newDraftFilters.max_lease_duration = '';
-    } else {
-      // Property type
-      newAppliedFilters.property_type = '';
-      newDraftFilters.property_type = '';
     }
 
     setAppliedFilters(newAppliedFilters);
@@ -284,12 +260,17 @@ export default function FeedScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={listings}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ListingCard listing={item} />}
-        contentContainerStyle={styles.listContent}
-      />
+      {/* Scrollable Content */}
+      <View style={styles.scrollableContent}>
+        <FlatList
+          data={listings}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <ListingCard listing={item} />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        />
+      </View>
 
       {/* Filter Modal */}
       <Modal
@@ -313,12 +294,9 @@ export default function FeedScreen() {
                 laundry: '',
                 parking: undefined,
                 pets_allowed: undefined,
-                property_type: '',
                 is_furnished: undefined,
                 utilities_included: undefined,
-                broker_fee_required: undefined,
-                min_lease_duration: '',
-                max_lease_duration: ''
+                broker_fee_required: undefined
               };
               setDraftFilters(resetFilters);
               setAppliedFilters(resetFilters);
@@ -354,20 +332,7 @@ export default function FeedScreen() {
             </View>
           </View>
 
-          {/* Property Type */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="home" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('propertyType')}</Text>
-            </View>
-            <View style={styles.chipContainer}>
-              {['apartment', 'house', 'condo', 'townhouse', 'studio', 'duplex'].map(type => (
-                <Pressable key={type} style={[styles.chip, draftFilters.property_type === type && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, property_type: f.property_type === type ? '' : type }))}>
-                  <Text style={[styles.chipText, draftFilters.property_type === type && styles.chipTextSelected]}>{t(type as TranslationKey)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+
 
           {/* Laundry Options */}
           <View style={styles.filterSection}>
@@ -413,17 +378,7 @@ export default function FeedScreen() {
             </View>
           </View>
 
-          {/* Lease Duration */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="calendar" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('leaseDuration')}</Text>
-            </View>
-            <View style={styles.priceInputContainer}>
-              <TextInput style={styles.input} placeholder={t('minMonths')} value={draftFilters.min_lease_duration} onChangeText={(text) => setDraftFilters(f => ({ ...f, min_lease_duration: text }))} keyboardType="numeric" />
-              <TextInput style={styles.input} placeholder={t('maxMonths')} value={draftFilters.max_lease_duration} onChangeText={(text) => setDraftFilters(f => ({ ...f, max_lease_duration: text }))} keyboardType="numeric" />
-            </View>
-          </View>
+
 
 
 
@@ -491,6 +446,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F7F7F7' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scrollableContent: { flex: 1 },
     listContent: { padding: 16 },
     headerSection: {
       paddingHorizontal: 20,

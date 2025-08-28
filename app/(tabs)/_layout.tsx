@@ -51,6 +51,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          headerShown: false,
+          tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} />,
+          ...(Platform.OS === 'web' && { href: '/(tabs)/map' })
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: t('settings'),

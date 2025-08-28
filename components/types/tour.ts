@@ -5,6 +5,11 @@ export interface PhoneFormat {
   format: string;
 }
 
+export interface PrioritySlot {
+  time: string;
+  rank: 1 | 2 | 3; // 1 = highest priority, 3 = lowest priority
+}
+
 export interface TourRequestData {
   user_id: string;
   listing_id: string;
@@ -13,6 +18,7 @@ export interface TourRequestData {
   contact_method: 'email' | 'phone' | 'both';
   selected_dates: Date[];
   selected_time_slots: string[];
+  priority_slots?: PrioritySlot[];
   notes?: string;
 }
 
@@ -22,6 +28,7 @@ export interface TourConfirmationData {
   contactMethod: 'email' | 'phone' | 'both';
   phoneNumber?: string;
   notes?: string;
+  prioritySlot?: string;
 }
 
 export interface TourModalProps {

@@ -2,7 +2,7 @@
   "expo": {
     "name": "ExpoSupabaseStarter",
     "slug": "zvi",
-    "scheme": "expo-supabase-starter",
+    "scheme": "com.zvi.studenthousing",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,6 +17,9 @@
       "config": {
         "usesNonExemptEncryption": false
       },
+      "associatedDomains": [
+        "applinks:*.your-web-domain.com"
+      ],
       "splash": {
         "image": "./assets/splash.png",
         "resizeMode": "cover",
@@ -33,6 +36,48 @@
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.zvi.studenthousing",
+
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "*.your-web-domain.com"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "zvi"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "exp+zvi"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "com.zvi.studenthousing",
+              "path": "/oauthredirect"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "splash": {
         "image": "./assets/splash.png",
         "resizeMode": "cover",
@@ -49,7 +94,20 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "This app uses location to show nearby listings on the map."
+        }
+      ],
+      [
+        "expo-maps",
+        {
+          "provider": "google",
+          "apiKey": "AIzaSyC3hXA5J9yJG7vtPpQsqXROXYiV0tlc2fo"
+        }
+      ]
     ],
     "extra": {
       "router": {

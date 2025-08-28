@@ -33,6 +33,8 @@ export type Listing = {
   preview_image: string;
   image_urls?: string[];
   is_saved_by_user?: boolean;
+  latitude?: number;
+  longitude?: number;
 };
 
 export default function ListingCard({ listing }: { listing: Listing }) {

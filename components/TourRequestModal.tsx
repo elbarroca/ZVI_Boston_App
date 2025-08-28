@@ -11,11 +11,12 @@ import {
   useWindowDimensions,
   ScrollView
 } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage } from '@/context/language-provider';
-import { TourModalProps, TourRequestData } from './types/tour';
+import { TourModalProps, TourRequestData, PrioritySlot } from './types/tour';
 
 interface PhoneFormat {
   code: string;
@@ -56,8 +57,9 @@ export function TourRequestModal({
   const colors = useMemo(() => themeColors[theme], [theme]);
 
   // Form state
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [selectedDates, setSelectedDates] = useState<{[key: string]: {selected: boolean}}>({});
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+  const [prioritySlots, setPrioritySlots] = useState<PrioritySlot[]>([]);
   const [wantsPhoneContact, setWantsPhoneContact] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('+1 ');
   const [selectedPhoneFormat, setSelectedPhoneFormat] = useState<PhoneFormat>(PHONE_FORMATS[0]);
@@ -87,8 +89,9 @@ export function TourRequestModal({
   // Reset form when modal opens
   useEffect(() => {
     if (visible) {
-      setSelectedDates([]);
+      setSelectedDates({});
       setSelectedTimeSlots([]);
+      setPrioritySlots([]);
       setWantsPhoneContact(false);
       setSelectedPhoneFormat(PHONE_FORMATS[0]);
       setShowPhoneFormatModal(false);
@@ -97,6 +100,40 @@ export function TourRequestModal({
     }
   }, [visible]);
 
+  // Helper functions for priority management
+  const getPriorityRank = (timeSlot: string): number => {
+    const priority = prioritySlots.find(p => p.time === timeSlot);
+    return priority?.rank || 0;
+  };
+
+  const getNextPriorityRank = (): 1 | 2 | 3 | null => {
+    const usedRanks = prioritySlots.map(p => p.rank);
+    if (!usedRanks.includes(1)) return 1;
+    if (!usedRanks.includes(2)) return 2;
+    if (!usedRanks.includes(3)) return 3;
+    return null;
+  };
+
+  const assignPriority = (timeSlot: string) => {
+    const existingPriority = prioritySlots.find(p => p.time === timeSlot);
+    if (existingPriority) {
+      // Remove existing priority
+      setPrioritySlots(prev => prev.filter(p => p.time !== timeSlot));
+    } else {
+      // Assign new priority based on click order (number of selected slots)
+      const currentSelectedCount = selectedTimeSlots.length;
+      const newRank = Math.min(currentSelectedCount + 1, 3) as 1 | 2 | 3;
+
+      if (prioritySlots.length < 3) {
+        setPrioritySlots(prev => [...prev, { time: timeSlot, rank: newRank }].sort((a, b) => a.rank - b.rank));
+      }
+    }
+  };
+
+  const removePriority = (timeSlot: string) => {
+    setPrioritySlots(prev => prev.filter(p => p.time !== timeSlot));
+  };
+
   // Memoize display phone number
   const displayPhoneNumber = useMemo(() => {
     return phoneNumber.replace(/^\+1\s*/, '');
@@ -104,26 +141,32 @@ export function TourRequestModal({
 
 
 
-  // Remove date
-  const removeDate = (dateToRemove: Date) => {
-    setSelectedDates(prev => prev.filter(date => date.toDateString() !== dateToRemove.toDateString()));
+  // Get selected dates as Date objects for compatibility
+  const getSelectedDatesAsArray = () => {
+    return Object.keys(selectedDates)
+      .filter(dateString => selectedDates[dateString].selected)
+      .map(dateString => new Date(dateString));
   };
 
-  // Get next 15 days for quick selection
-  const getNext15Days = () => {
-    const days = [];
-    const today = new Date();
-    for (let i = 1; i <= 15; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      days.push(date);
-    }
-    return days;
+  // Handle calendar day press
+  const handleDayPress = (day: any) => {
+    const dateString = day.dateString;
+    setSelectedDates(prev => {
+      const newDates = { ...prev };
+      if (newDates[dateString]?.selected) {
+        delete newDates[dateString];
+      } else {
+        newDates[dateString] = { selected: true };
+      }
+      return newDates;
+    });
   };
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (selectedDates.length === 0 || selectedTimeSlots.length === 0) {
+    const selectedDatesArray = getSelectedDatesAsArray();
+
+    if (selectedDatesArray.length === 0 || selectedTimeSlots.length === 0) {
       Alert.alert("Please select at least one date and one time slot.");
       return;
     }
@@ -134,7 +177,7 @@ export function TourRequestModal({
 
     // Create preferred times for all selected dates and time combinations
     const preferredTimes: string[] = [];
-    selectedDates.forEach(date => {
+    selectedDatesArray.forEach(date => {
       const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       selectedTimeSlots.forEach(timeSlot => {
@@ -158,8 +201,9 @@ export function TourRequestModal({
       preferred_times: preferredTimes,
       contact_phone: wantsPhoneContact ? `${selectedPhoneFormat.code} ${cleanPhone}` : undefined,
       contact_method: contactMethod,
-      selected_dates: selectedDates,
+      selected_dates: selectedDatesArray,
       selected_time_slots: selectedTimeSlots,
+      priority_slots: prioritySlots.length > 0 ? prioritySlots : undefined,
       notes: wantsToAddNotes ? notes.trim() : undefined,
     };
 
@@ -181,7 +225,11 @@ export function TourRequestModal({
       onRequestClose={onClose}
     >
       <Pressable style={styles.modalBackdrop} onPress={onClose} />
-      <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+      <ScrollView
+        style={[styles.modalContent, { backgroundColor: colors.surface }]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <Text style={[styles.modalTitle, { color: colors.text }]}>{t('requestATour')}</Text>
         <Text style={[styles.modalGreeting, { color: colors.text }]}>
           {t('hello')}, {userName || 'there'}!
@@ -189,6 +237,8 @@ export function TourRequestModal({
         <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>
           {t('selectPreferredTimes').replace('{email}', userEmail || 'your email')}
         </Text>
+
+        <View style={styles.sectionSpacer} />
 
         {/* Enhanced Date & Time Selection */}
         <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 16 }]}>
@@ -203,135 +253,351 @@ export function TourRequestModal({
             </Text>
           </View>
 
-          {/* Quick Date Selection - Column Layout */}
-          <View style={styles.quickDatesGrid}>
-            {getNext15Days().map((date, index) => {
-              const isSelected = selectedDates.some(selected => selected.toDateString() === date.toDateString());
-              return (
-                <Pressable
-                  key={index}
-                  style={[
-                    styles.quickDateChip,
-                    { backgroundColor: colors.background },
-                    isSelected && { backgroundColor: colors.primary }
-                  ]}
-                  onPress={() => {
-                    const dateStr = date.toDateString();
-                    const isAlreadySelected = selectedDates.some(d => d.toDateString() === dateStr);
-
-                    if (isAlreadySelected) {
-                      setSelectedDates(prev => prev.filter(d => d.toDateString() !== dateStr));
-                    } else {
-                      setSelectedDates(prev => [...prev, date]);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.quickDateText,
-                    { color: colors.text },
-                    isSelected && { color: 'white' }
-                  ]}>
-                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          {/* Calendar Component - Compact and Responsive */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.calendarScrollContainer}
+            contentContainerStyle={styles.calendarContentContainer}
+          >
+            <View style={[styles.calendarContainer, { width: Math.max(width - 32, 320) }]}>
+              <Calendar
+                onDayPress={handleDayPress}
+                markedDates={selectedDates}
+                markingType={'multi-dot'}
+                theme={{
+                  selectedDayBackgroundColor: colors.primary,
+                  todayTextColor: colors.primary,
+                  arrowColor: colors.primary,
+                  textDayFontFamily: 'System',
+                  textMonthFontFamily: 'System',
+                  textDayHeaderFontFamily: 'System',
+                  textDayFontSize: 14,
+                  textMonthFontSize: 16,
+                  textDayHeaderFontSize: 12,
+                  'stylesheet.calendar.main': {
+                    container: {
+                      paddingLeft: 0,
+                      paddingRight: 0,
+                      backgroundColor: 'transparent',
+                      width: '100%',
+                    },
+                    monthView: {
+                      backgroundColor: 'transparent',
+                      width: '100%',
+                    },
+                  },
+                  'stylesheet.calendar.header': {
+                    header: {
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      paddingLeft: 5,
+                      paddingRight: 5,
+                      marginTop: 6,
+                      alignItems: 'center',
+                      width: '100%',
+                    },
+                    monthText: {
+                      margin: 5,
+                      fontSize: 16,
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      backgroundColor: 'transparent',
+                      flex: 1,
+                    },
+                    arrow: {
+                      padding: 8,
+                    },
+                    week: {
+                      marginTop: 5,
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      width: '100%',
+                    },
+                  },
+                  'stylesheet.day.basic': {
+                    base: {
+                      width: 28,
+                      height: 28,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                    text: {
+                      fontSize: 14,
+                      fontWeight: '400',
+                    },
+                  },
+                  'stylesheet.day.single': {
+                    base: {
+                      width: 28,
+                      height: 28,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    },
+                    text: {
+                      fontSize: 14,
+                      fontWeight: '400',
+                    },
+                  },
+                }}
+                minDate={new Date().toISOString().split('T')[0]} // Disable past dates
+                maxDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} // 14-day limit
+                enableSwipeMonths={true}
+                hideExtraDays={true}
+                firstDay={1} // Start week on Monday
+                showWeekNumbers={false}
+                monthFormat={'MMM yyyy'}
+                hideArrows={false}
+              />
+            </View>
+          </ScrollView>
 
           {/* Selected Dates Display */}
-          {selectedDates.length > 0 && (
-            <View style={styles.selectedDatesContainer}>
-              <Text style={[styles.selectedDatesTitle, { color: colors.text }]}>
-                {t('selectedDates')} ({selectedDates.length}):
-              </Text>
+          {Object.keys(selectedDates).length > 0 && (
+            <View style={[styles.selectedDatesContainer, { backgroundColor: colors.background }]}>
+              <View style={styles.selectedDatesHeader}>
+                <Text style={[styles.selectedDatesTitle, { color: colors.text }]}>
+                  📅 Selected Dates ({Object.keys(selectedDates).length})
+                </Text>
+                <Text style={[styles.clearAllText, { color: colors.primary }]}
+                      onPress={() => setSelectedDates({})}>
+                  Clear All
+                </Text>
+              </View>
               <View style={styles.selectedDatesList}>
-                {selectedDates.map((date, index) => (
-                  <View key={index} style={[styles.selectedDateChip, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.selectedDateText}>
-                      {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </Text>
-                    <Pressable
-                      style={styles.removeDateButton}
-                      onPress={() => removeDate(date)}
-                    >
-                      <Text style={styles.removeDateText}>×</Text>
-                    </Pressable>
-                  </View>
-                ))}
+                {Object.keys(selectedDates)
+                  .sort() // Sort dates chronologically
+                  .map((dateString) => {
+                  const date = new Date(dateString);
+                  return (
+                    <View key={dateString} style={[styles.selectedDateChip, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}>
+                      <Text style={[styles.selectedDateText, { color: colors.primary }]}>
+                        {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </Text>
+                      <Pressable
+                        style={styles.removeDateButton}
+                        onPress={() => handleDayPress({ dateString })}
+                      >
+                        <Ionicons name="close-circle" size={16} color={colors.primary} />
+                      </Pressable>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           )}
         </View>
 
-        {/* Time Slot Selection - Multi-select (Responsive) */}
+        <View style={styles.sectionSpacer} />
+
+        {/* Time Slot Selection with Priority Ranking */}
         <View style={styles.timeSection}>
-          <Text style={[styles.sectionSubtitle, { color: colors.text }]}>
-            {t('chooseTimePreferences')}
+          <View style={styles.timeSectionHeader}>
+            <Text style={[styles.sectionSubtitle, { color: colors.text }]}>
+              {t('chooseTimePreferences')}
+            </Text>
+            {prioritySlots.length > 0 && (
+              <View style={[styles.priorityBadge, { backgroundColor: '#FFC700' + '20' }]}>
+                <Ionicons name="star" size={14} color="#FFC700" />
+                <Text style={[styles.priorityBadgeText, { color: '#FFC700' }]}>
+                  {prioritySlots.length} Priority{prioritySlots.length > 1 ? 'ies' : 'y'} Set
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[styles.priorityHint, { color: colors.textSecondary }]}>
+            Select up to 3 time slots • Priority based on selection order (first = highest priority)
           </Text>
-          <View style={[styles.timeSlotContainer, {
-            flexDirection: width > 600 ? 'row' : 'column',
-            flexWrap: width > 600 ? 'wrap' : 'nowrap',
-          }]}>
+          <View style={styles.timeSlotContainer}>
             {timeSlots.map(time => {
               const isSelected = selectedTimeSlots.includes(time);
+              const priorityRank = getPriorityRank(time);
+              const priorityColors = {
+                1: '#60A5FA', // Light blue for #1 (highest priority)
+                2: '#34D399', // Light green for #2
+                3: '#F87171', // Light red for #3
+              };
+              const priorityColor = priorityColors[priorityRank as keyof typeof priorityColors] || colors.primary;
+
               return (
-                <Pressable
-                  key={time}
-                  style={[
-                    styles.timeChip,
-                    { backgroundColor: colors.background },
-                    isSelected && { backgroundColor: colors.primary },
-                    width > 600 ? { width: '48%', marginHorizontal: 4 } : { width: '100%' }
-                  ]}
-                  onPress={() => {
-                    if (isSelected) {
-                      setSelectedTimeSlots(prev => prev.filter(t => t !== time));
-                    } else {
-                      setSelectedTimeSlots(prev => [...prev, time]);
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.timeChipText,
-                    { color: colors.text },
-                    isSelected && { color: 'white' }
-                  ]}>
-                    {time}
-                  </Text>
-                </Pressable>
+                <View key={time} style={styles.timeSlotRow}>
+                  <Pressable
+                    style={[
+                      styles.timeChip,
+                      { backgroundColor: colors.background },
+                      isSelected && priorityRank === 0 && { backgroundColor: colors.primary + '10' },
+                      priorityRank > 0 && {
+                        borderColor: priorityColor,
+                        borderWidth: 2,
+                        backgroundColor: priorityColor + '05'
+                      },
+
+                    ]}
+                    onPress={() => {
+                      if (isSelected) {
+                        // Remove from selection and priority
+                        setSelectedTimeSlots(prev => prev.filter(t => t !== time));
+                        removePriority(time);
+                      } else {
+                        // Add to selection and assign priority based on order
+                        if (selectedTimeSlots.length < 3) {
+                          setSelectedTimeSlots(prev => [...prev, time]);
+                          assignPriority(time);
+                        }
+                      }
+                    }}
+                  >
+                    <View style={styles.timeChipContent}>
+                      <Text style={[
+                        styles.timeChipText,
+                        { color: colors.text },
+                        isSelected && priorityRank === 0 && { color: colors.primary },
+                        priorityRank > 0 && { color: priorityColor, fontWeight: '700' }
+                      ]}>
+                        {time}
+                      </Text>
+                      {priorityRank > 0 && (
+                        <View style={styles.priorityIndicator}>
+                          <Ionicons name="star" size={18} color={priorityColor} />
+                          <Text style={[styles.priorityNumber, { color: priorityColor }]}>
+                            #{priorityRank}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </Pressable>
+                </View>
               );
             })}
           </View>
+          {selectedTimeSlots.length >= 3 && (
+            <Text style={[styles.selectionLimitText, { color: colors.textSecondary }]}>
+              Maximum 3 time slots allowed
+            </Text>
+          )}
         </View>
 
         {/* Date Picker Modal - Removed for web compatibility */}
 
         {/* Enhanced Selected Times Display */}
-        {selectedDates.length > 0 && selectedTimeSlots.length > 0 && (
+        {Object.keys(selectedDates).length > 0 && selectedTimeSlots.length > 0 && (
           <View style={[styles.selectedTimeDisplay, { backgroundColor: colors.background }]}>
-            <Text style={[styles.selectedTimeHeader, { color: colors.text }]}>
-              📅 Selected Schedule
-            </Text>
-            <View style={styles.selectedTimeGrid}>
-              {selectedDates.map((date, dateIndex) => (
-                <View key={dateIndex} style={styles.selectedDateRow}>
-                  <Text style={[styles.selectedDateLabel, { color: colors.primary }]}>
-                    {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}:
+            <View style={styles.selectedTimeHeader}>
+              <Text style={[styles.selectedTimeTitle, { color: colors.text }]}>
+                📅 Selected Schedule
+              </Text>
+              {prioritySlots.length > 0 && (
+                <View style={styles.prioritySummary}>
+                  <Ionicons name="trophy" size={16} color="#FFD700" />
+                  <Text style={[styles.prioritySummaryText, { color: colors.text }]}>
+                    {prioritySlots.length} prioritized slot{prioritySlots.length > 1 ? 's' : ''}
                   </Text>
-                  <View style={styles.selectedTimeSlotsRow}>
-                    {selectedTimeSlots.map((timeSlot, timeIndex) => (
-                      <View key={timeIndex} style={[styles.selectedTimeSlotChip, { backgroundColor: colors.primary + '20' }]}>
-                        <Text style={[styles.selectedTimeSlotText, { color: colors.primary }]}>
-                          {timeSlot}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
                 </View>
-              ))}
+              )}
+            </View>
+
+            {prioritySlots.length > 0 && (
+              <View style={styles.priorityRankingDisplay}>
+                <Text style={[styles.priorityRankingTitle, { color: colors.text }]}>
+                  🎯 Priority Order
+                </Text>
+                <View style={styles.priorityRankingList}>
+                  {prioritySlots
+                    .sort((a, b) => a.rank - b.rank)
+                                      .map((priority, index) => {
+                    const priorityColors = {
+                      1: '#60A5FA',
+                      2: '#34D399',
+                      3: '#F87171',
+                    };
+                    const color = priorityColors[priority.rank as keyof typeof priorityColors];
+
+                      return (
+                        <View key={priority.time} style={styles.priorityRankingItem}>
+                          <View style={[
+                            styles.priorityRankBadge,
+                            {
+                              backgroundColor: color + '15',
+                              borderColor: color + '30',
+                              shadowColor: color,
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 4,
+                              elevation: 2,
+                            }
+                          ]}>
+                            <Text style={[styles.priorityRankNumber, { color }]}>
+                              {priority.rank}
+                            </Text>
+                            <Ionicons name="star" size={14} color={color} />
+                          </View>
+                          <Text style={[styles.priorityRankTime, { color: colors.text }]}>
+                            {priority.time}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                </View>
+              </View>
+            )}
+
+            <View style={styles.selectedTimeGrid}>
+              {Object.keys(selectedDates)
+                .sort() // Sort dates chronologically
+                .map((dateString) => {
+                const date = new Date(dateString);
+                return (
+                  <View key={dateString} style={styles.selectedDateRow}>
+                    <Text style={[styles.selectedDateLabel, { color: colors.primary }]}>
+                      {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}:
+                    </Text>
+                    <View style={styles.selectedTimeSlotsRow}>
+                      {selectedTimeSlots
+                        .sort((a, b) => getPriorityRank(a) - getPriorityRank(b)) // Sort by priority
+                        .map((timeSlot, timeIndex) => {
+                        const rank = getPriorityRank(timeSlot);
+                        const priorityColors = {
+                          1: '#60A5FA',
+                          2: '#34D399',
+                          3: '#F87171',
+                        };
+                        const priorityColor = priorityColors[rank as keyof typeof priorityColors];
+
+                        return (
+                          <View key={timeIndex} style={[
+                            styles.selectedTimeSlotChip,
+                            {
+                              backgroundColor: rank > 0 ? priorityColor + '15' : colors.primary + '10',
+                              borderColor: rank > 0 ? priorityColor : colors.primary,
+                              borderWidth: 1,
+                            }
+                          ]}>
+                            <Text style={[
+                              styles.selectedTimeSlotText,
+                              {
+                                color: rank > 0 ? priorityColor : colors.primary,
+                                fontWeight: rank > 0 ? '600' : '500',
+                              }
+                            ]}>
+                              {timeSlot}
+                              {rank > 0 && (
+                                <Text style={[styles.priorityChipNumber, { color: priorityColor }]}>
+                                  #{rank}
+                                </Text>
+                              )}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}
+
+        <View style={styles.sectionSpacer} />
 
         {/* Phone Number Opt-in */}
         <View style={styles.phoneToggleContainer}>
@@ -435,6 +701,8 @@ export function TourRequestModal({
           </View>
         </Modal>
 
+        <View style={styles.sectionSpacer} />
+
         {/* Notes/Message Opt-in */}
         <View style={styles.notesToggleContainer}>
           <View style={styles.notesLabelContainer}>
@@ -471,6 +739,8 @@ export function TourRequestModal({
           </View>
         )}
 
+        <View style={styles.sectionSpacer} />
+
         {/* Submit Button */}
         <Pressable
           style={[
@@ -488,7 +758,7 @@ export function TourRequestModal({
             {isSubmitting ? t('submitting') : t('submitRequest')}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </Modal>
   );
 }
@@ -500,14 +770,17 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 24,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    padding: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    gap: 16,
+    maxHeight: '85%',
+  },
+  sectionSpacer: {
+    height: 20,
   },
   modalTitle: {
     fontSize: 22,
@@ -543,36 +816,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-
-  quickDatesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  calendarScrollContainer: {
     marginBottom: 16,
-    justifyContent: 'space-between',
   },
-  quickDateChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    minWidth: 85,
+  calendarContentContainer: {
     alignItems: 'center',
-    flex: 1,
-    maxWidth: '30%',
   },
-  quickDateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
+  calendarContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
+
+
   selectedDatesContainer: {
     marginTop: 8,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  selectedDatesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   selectedDatesTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   selectedDatesList: {
     flexDirection: 'row',
@@ -582,59 +862,89 @@ const styles = StyleSheet.create({
   selectedDateChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#3B82F6',
+    borderRadius: 20,
+    borderWidth: 1,
   },
   selectedDateText: {
-    color: 'white',
     fontSize: 12,
     fontWeight: '500',
   },
   removeDateButton: {
-    marginLeft: 8,
+    marginLeft: 6,
     padding: 2,
-  },
-  removeDateText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   // Time section styles
   timeSection: {
     marginBottom: 16,
   },
+  timeSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    gap: 4,
+  },
+  priorityBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   timeSlotContainer: {
     gap: 12,
+    marginTop: 8,
   },
   timeChip: {
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 14,
     alignItems: 'center',
-    minHeight: 50,
+    minHeight: 52,
     justifyContent: 'center',
+    marginBottom: 10,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  timeChipContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  priorityTimeChip: {
+    shadowColor: '#FFC700',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   timeChipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
   },
 
   // Selected time display styles
   selectedTimeDisplay: {
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     marginTop: 8,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  selectedTimeHeader: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
+
   selectedTimeGrid: {
     gap: 8,
   },
@@ -655,9 +965,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   selectedTimeSlotChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    marginVertical: 2,
   },
   selectedTimeSlotText: {
     fontSize: 12,
@@ -668,12 +979,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   phoneLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   phoneToggleLabel: {
     fontSize: 16,
@@ -685,9 +998,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   phonePrefix: {
     fontSize: 16,
@@ -767,12 +1080,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   notesLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   notesToggleLabel: {
     fontSize: 16,
@@ -782,9 +1097,9 @@ const styles = StyleSheet.create({
   },
   notesInputContainer: {
     borderRadius: 12,
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   notesInput: {
     fontSize: 16,
@@ -829,5 +1144,107 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'white',
     borderTopColor: 'transparent',
+  },
+  // Priority ranking styles
+  priorityHint: {
+    fontSize: 12,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  timeSlotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  selectionLimitText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  // Enhanced priority styles
+  priorityIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 12,
+  },
+  priorityNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Enhanced selected time display styles
+  selectedTimeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  selectedTimeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  prioritySummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  prioritySummaryText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Priority ranking display
+  priorityRankingDisplay: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  priorityRankingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  priorityRankingList: {
+    gap: 8,
+  },
+  priorityRankingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  priorityRankBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  priorityRankNumber: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  priorityRankTime: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  priorityRankArrow: {
+    fontSize: 14,
+    fontWeight: '300',
+  },
+
+  // Enhanced time chip styles
+  priorityChipNumber: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginLeft: 4,
   },
 });

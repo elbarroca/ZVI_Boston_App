@@ -10,12 +10,9 @@ export const getListings = async (filters?: {
   laundry?: string;
   parking?: boolean;
   pets_allowed?: boolean;
-  property_type?: string;
   is_furnished?: boolean;
   utilities_included?: boolean;
   broker_fee_required?: boolean;
-  min_lease_duration?: string;
-  max_lease_duration?: string;
 }) => {
   if (__DEV__) {
     console.log('=== API getListings Debug ===');
@@ -59,11 +56,6 @@ export const getListings = async (filters?: {
       }
     }
 
-    // Property type filter
-    if (filters?.property_type && filters.property_type !== '') {
-      query = query.eq('property_type', filters.property_type);
-    }
-
     // Laundry filter
     if (filters?.laundry && filters.laundry !== '') {
       query = query.eq('laundry_type', filters.laundry);
@@ -86,18 +78,6 @@ export const getListings = async (filters?: {
     }
     if (filters?.broker_fee_required !== undefined) {
       query = query.eq('broker_fee_required', filters.broker_fee_required);
-    }
-
-    // Lease duration filters
-    if (filters?.min_lease_duration) {
-      const minLeaseInt = parseInt(filters.min_lease_duration, 10);
-      if (__DEV__) console.log('Applying min_lease_duration filter:', minLeaseInt);
-      query = query.gte('lease_duration_months', minLeaseInt);
-    }
-    if (filters?.max_lease_duration) {
-      const maxLeaseInt = parseInt(filters.max_lease_duration, 10);
-      if (__DEV__) console.log('Applying max_lease_duration filter:', maxLeaseInt);
-      query = query.lte('lease_duration_months', maxLeaseInt);
     }
 
     if (__DEV__) {
@@ -140,6 +120,9 @@ export const getListings = async (filters?: {
     is_furnished: listing.is_furnished || false,
     utilities_included: listing.utilities_included || false,
     pets_allowed: listing.pets_allowed || false,
+    // Add mock coordinates for map functionality (replace with real coordinates from database later)
+    latitude: listing.latitude || (42.35 + (Math.random() - 0.5) * 0.05), // Boston area with some random variation
+    longitude: listing.longitude || (-71.09 + (Math.random() - 0.5) * 0.05),
   }));
 };
 
@@ -422,6 +405,7 @@ export const createTourRequest = async (
     contact_phone?: string;
     contact_method?: 'email' | 'phone' | 'both';
     preferred_times_summary?: string;
+    priority_slot?: string;
   }
 ) => {
   // Validate required fields
@@ -445,6 +429,7 @@ export const createTourRequest = async (
     contact_method: options?.contact_method || 'email',
     preferred_times_summary: combinedSummary,
     notes: options?.notes || null,
+    priority_slot: options?.priority_slot || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -589,6 +574,7 @@ export const createTourRequestWithValidation = async (
     contact_phone?: string;
     contact_method?: 'email' | 'phone' | 'both';
     preferred_times_summary?: string;
+    priority_slot?: string;
   }
 ) => {
   // Validate required fields

@@ -168,7 +168,8 @@ export default function ListingDetailScreen() {
         contact_phone: requestData.contact_phone,
         contact_method: requestData.contact_method,
         preferred_times_summary: preferredTimesSummary,
-        notes: requestData.notes
+        notes: requestData.notes,
+        priority_slot: requestData.priority_slot
       });
 
       // Return the data for confirmation modal
@@ -177,7 +178,8 @@ export default function ListingDetailScreen() {
         timeSlots: requestData.selected_time_slots,
         contactMethod: requestData.contact_method,
         phoneNumber: requestData.contact_phone,
-        notes: requestData.notes
+        notes: requestData.notes,
+        prioritySlot: requestData.priority_slot
       };
     },
     onSuccess: (data) => {

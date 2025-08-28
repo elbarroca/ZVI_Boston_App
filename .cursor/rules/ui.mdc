@@ -1,0 +1,115 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+
+  You are an expert in JavaScript, React Native, Expo, and Mobile UI development.
+  
+  Code Style and Structure:
+  - Write Clean, Readable Code: Ensure your code is easy to read and understand. Use descriptive names for variables and functions.
+  - Use Functional Components: Prefer functional components with hooks (useState, useEffect, etc.) over class components.
+  - Component Modularity: Break down components into smaller, reusable pieces. Keep components focused on a single responsibility.
+  - Organize Files by Feature: Group related components, hooks, and styles into feature-based directories (e.g., user-profile, chat-screen).
+
+  Naming Conventions:
+  - Variables and Functions: Use camelCase for variables and functions (e.g., isFetchingData, handleUserInput).
+  - Components: Use PascalCase for component names (e.g., UserProfile, ChatScreen).
+  - Directories: Use lowercase and hyphenated names for directories (e.g., user-profile, chat-screen).
+
+  JavaScript Usage:
+  - Avoid Global Variables: Minimize the use of global variables to prevent unintended side effects.
+  - Use ES6+ Features: Leverage ES6+ features like arrow functions, destructuring, and template literals to write concise code.
+  - PropTypes: Use PropTypes for type checking in components if you're not using TypeScript.
+
+  Performance Optimization:
+  - Optimize State Management: Avoid unnecessary state updates and use local state only when needed.
+  - Memoization: Use React.memo() for functional components to prevent unnecessary re-renders.
+  - FlatList Optimization: Optimize FlatList with props like removeClippedSubviews, maxToRenderPerBatch, and windowSize.
+  - Avoid Anonymous Functions: Refrain from using anonymous functions in renderItem or event handlers to prevent re-renders.
+
+  UI and Styling:
+  - Consistent Styling: Use StyleSheet.create() for consistent styling or Styled Components for dynamic styles.
+  - Responsive Design: Ensure your design adapts to various screen sizes and orientations. Consider using responsive units and libraries like react-native-responsive-screen.
+  - Optimize Image Handling: Use optimized image libraries like react-native-fast-image to handle images efficiently.
+
+  Best Practices:
+  - Follow React Native's Threading Model: Be aware of how React Native handles threading to ensure smooth UI performance.
+  - Use Expo Tools: Utilize Expo's EAS Build and Updates for continuous deployment and Over-The-Air (OTA) updates.
+  - Expo Router: Use Expo Router for file-based routing in your React Native app. It provides native navigation, deep linking, and works across Android, iOS, and web. Refer to the official documentation for setup and usage: https://docs.expo.dev/router/introduction/
+    
+Current Brefing and TO DOs
+
+Feedback on V0 Demo
+First off, this looks really strong for a first version, the core functionality is all there
+(authentication, listings, filters, tour requests, saved listings, translations, admin panel, etc.).
+Great progress. Below are our thoughts and we can talk through during meeting:
+Core Features & Functionality
+●
+Listings Feed: Works well. think the ability to filter by bed/bath/price is all we need. We
+can probably remove filters for apartment type and lease duration — everything is
+essentially a 12-month lease, and students don’t really distinguish between
+condos/houses.
+●
+Listing Details: Love the photo carousel/swiping. Ideally, under the images we keep it
+very clean:
+○
+Address
+○
+Bed/Bath/Price
+○
+Maybe a few key “tags” (e.g.
+“Pet Friendly,
+” “Near T,
+” etc.)
+○
+When clicked, it opens more details and description (as you already have).
+●
+Photos/Media: We have videos and virtual tours for some of our listings, is there a way
+we can support these for those certain listings. That’s a huge help for students and
+parents.
+●
+Tour Requests: we like the 14-day limit. Is there a way to make the calendar look a bit
+cleaner? Also, since users can select up to 3 time slots, can we add a way for them to
+prioritize their top choice?
+●
+Contact Info: Email vs. phone toggle is perfect. Great to see you already considered
+international phone numbers and multiple languages. This is HUGE for BU international
+students.
+Missing or Nice-to-Have Features
+●
+Map Integration: This is probably the one key thing missing. Students don’t always know
+Boston streets/neighborhoods. A simple map view with campus pins (BU, Northeastern,
+Harvard, etc.) would make it much easier for them to orient themselves.
+●
+Shared Listings: When a listing is shared with someone who doesn’t have the app, what
+does that look like? Parents (who may not have .edu emails) will definitely need to be
+able to view listings. How do we want to handle that access?
+Backend/Admin Panel
+●
+●
+●
+The pending/confirmed/contacted tabs for tour requests are excellent — will help keep
+us organized.
+Is there a way to see the requested tour times at a glance more clearly in the
+dashboard? That would save a lot of back-and-forth. Maybe have confirmed tours go into
+a calendar (this would make things easier for us to manage).
+Being able to create and edit listings directly in the admin panel is great. Once we start
+pulling listings from our database, we can streamline that flow.
+Design/UX Notes
+●
+Overall UI is super simple, which is good for MVP.
+●
+Calendar styling could be cleaner.
+●
+For listings, maybe we lean toward less text under photos (students care most about
+location, price, bed/bath). Descriptions might be secondary.
+Generally, think this is an excellent foundation — the infrastructure is clearly in place. I’d
+prioritize:
+1. Map integration (huge for student users).
+2. Tour request clarity (calendar style + priority ranking).
+3. Shared listing access for non-
+.edu users (parents).
+4. Media expansion (video/virtual tour support).
+If we hit those points, I think the MVP will feel immediately valuable.

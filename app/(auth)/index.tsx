@@ -1,8 +1,10 @@
 // app/(auth)/index.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoogleSignIn, signInWithEmail, signUpWithEmail } from '@/lib/auth'; // Centralize auth functions
+import GoogleIcon from '@/components/GoogleIcon'; // Import the new GoogleIcon component
+import { EmailAuthButton } from '@/components/ui/EmailAuthButton'; // Import the new EmailAuthButton component
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -33,7 +35,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
       <View style={styles.headerContainer}>
         <Text style={styles.header}>ZVI</Text>
         <Text style={styles.subHeader}>
@@ -53,43 +55,65 @@ export default function AuthScreen() {
             console.log('Starting Google sign-in...');
             const result = await signInWithGoogle();
             if (result) {
-              console.log('Google sign-in initiated, session will be handled by layout...');
+              console.log('Google sign-in initiated successfully.');
               // For OAuth, don't navigate explicitly - let the layout handle it
               // The session will be detected from URL parameters
+            } else {
+              console.log('Google sign-in cancelled or failed.');
             }
           }}
         >
-          {!googleIconError ? (
-            <Image
-              source={GOOGLE_ICON_URI}
-              style={styles.icon}
-              onError={() => {
-                console.log('Google icon failed to load, using fallback');
-                setGoogleIconError(true);
-              }}
-            />
-          ) : (
-            <Text style={[styles.icon, styles.fallbackIcon]}>G</Text>
-          )}
-          <Text style={styles.googleButtonText}>Continue with Google</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {!googleIconError ? (
+              <GoogleIcon width={Platform.OS === 'web' ? 22 : 20} height={Platform.OS === 'web' ? 22 : 20} />
+            ) : (
+              <Text style={[styles.icon, styles.fallbackIcon]}>G</Text>
+            )}
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </View>
         </Pressable>
 
         <Text style={styles.orText}>or</Text>
 
-        <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-        <TextInput style={styles.input} placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
+        <TextInput
+          style={[styles.input, { marginBottom: 16 }]} // Added marginBottom
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={[styles.input, { marginBottom: 24 }]} // Increased marginBottom for spacing before button
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-        <Pressable
-          style={({ pressed, hovered }) => [
-            styles.button,
-            styles.emailButton,
-            (hovered) && styles.emailButtonHovered,
-            pressed && styles.buttonPressed,
-          ]}
+        <EmailAuthButton
           onPress={handleEmailAuth}
-        >
-          <Text style={styles.emailButtonText}>{isSignUp ? 'Create Account' : 'Sign In'}</Text>
-        </Pressable>
+          title={isSignUp ? 'Create Account' : 'Sign In'}
+          buttonStyle={{
+            backgroundColor: 'transparent', // Make background transparent
+            marginTop: 24,
+            marginBottom: 20,
+            shadowColor: 'transparent', // Remove shadow
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            elevation: 0,
+            borderWidth: 0, // Ensure no border
+          }}
+          textStyle={{
+            color: '#1A1A1A', // Black text
+            fontSize: Platform.OS === 'web' ? 17 : 16,
+            fontWeight: '600', // Slightly less bold for a simpler look
+            letterSpacing: 0.5,
+            textAlign: 'center',
+          }}
+          maxWidth={Platform.OS === 'web' ? 420 : screenWidth * 0.85}
+        />
 
         <Pressable onPress={() => setIsSignUp(!isSignUp)}>
           <Text style={styles.footerText}>
@@ -98,7 +122,7 @@ export default function AuthScreen() {
           </Text>
         </Pressable>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -107,14 +131,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Platform.OS === 'web' ? Math.max(32, screenWidth * 0.05) : 24,
     paddingVertical: Platform.OS === 'web' ? Math.max(32, screenHeight * 0.05) : 24,
-    backgroundColor: '#FFFFFF',
     minHeight: screenHeight,
     width: '100%'
   },
   headerContainer: {
-    flex: 1,
+    // Removed flex: 1 to allow formContainer to take more space
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Platform.OS === 'web' ? 60 : 40,
@@ -122,8 +151,8 @@ const styles = StyleSheet.create({
     maxWidth: 400
   },
   formContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
+    flex: 1, // Allow formContainer to expand if needed
+    justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 420 : screenWidth * 0.9,
@@ -203,29 +232,8 @@ const styles = StyleSheet.create({
     fontSize: Platform.OS === 'web' ? 17 : 16,
     fontWeight: '600',
     marginLeft: 12,
-    letterSpacing: 0.5,
-    textAlign: 'center'
-  },
-  emailButton: {
-    backgroundColor: '#00A896',
-    borderWidth: 0,
-    marginTop: 8,
-    shadowColor: '#00A896',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6
-  },
-  emailButtonHovered: {
-    backgroundColor: '#008778',
-    shadowOpacity: 0.3
-  },
-  emailButtonText: {
-    color: '#FFFFFF',
-    fontSize: Platform.OS === 'web' ? 17 : 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textAlign: 'center'
+    // Ensure the text is vertically centered with the icon
+    lineHeight: Platform.OS === 'web' ? 22 : 20,
   },
   icon: {
     width: Platform.OS === 'web' ? 22 : 20,
@@ -247,11 +255,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1
   },
   footerText: {
-    marginTop: Platform.OS === 'web' ? 40 : 32,
+    marginTop: Platform.OS === 'web' ? 40 : 32, // Ensure consistent spacing
     textAlign: 'center',
     color: '#64748B',
     fontSize: Platform.OS === 'web' ? 16 : 15,
-    lineHeight: Platform.OS === 'web' ? 24 : 22
+    lineHeight: Platform.OS === 'web' ? 24 : 22,
   },
   linkText: {
     color: '#00A896',

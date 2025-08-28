@@ -59,6 +59,15 @@ export function TourConfirmationModal({
               {t('yourSelectedSchedule')}
             </Text>
 
+            {data.prioritySlot && (
+              <View style={styles.priorityConfirmation}>
+                <Ionicons name="star" size={16} color="#FFC700" />
+                <Text style={[styles.priorityConfirmationText, { color: colors.text }]}>
+                  <Text style={{ fontWeight: '600' }}>Top Choice:</Text> {data.prioritySlot}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.confirmationSchedule}>
               {data.dates.map((date, dateIndex) => (
                 <View key={dateIndex} style={styles.confirmationDateRow}>
@@ -67,9 +76,23 @@ export function TourConfirmationModal({
                   </Text>
                   <View style={styles.confirmationTimeSlotsRow}>
                     {data.timeSlots.map((timeSlot, timeIndex) => (
-                      <View key={timeIndex} style={[styles.confirmationTimeSlotChip, { backgroundColor: colors.primary + '15' }]}>
-                        <Text style={[styles.confirmationTimeSlotText, { color: colors.primary }]}>
+                      <View key={timeIndex} style={[
+                        styles.confirmationTimeSlotChip,
+                        {
+                          backgroundColor: data.prioritySlot === timeSlot ? '#FFC700' + '30' : colors.primary + '15',
+                          borderColor: data.prioritySlot === timeSlot ? '#FFC700' : 'transparent',
+                          borderWidth: data.prioritySlot === timeSlot ? 1 : 0,
+                        }
+                      ]}>
+                        <Text style={[
+                          styles.confirmationTimeSlotText,
+                          {
+                            color: data.prioritySlot === timeSlot ? '#FFC700' : colors.primary,
+                            fontWeight: data.prioritySlot === timeSlot ? '600' : '500',
+                          }
+                        ]}>
                           {timeSlot}
+                          {data.prioritySlot === timeSlot && ' ⭐'}
                         </Text>
                       </View>
                     ))}
@@ -266,5 +289,18 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  priorityConfirmation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFC70020',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  priorityConfirmationText: {
+    fontSize: 14,
+    marginLeft: 6,
   },
 });
