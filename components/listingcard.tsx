@@ -137,7 +137,6 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             source={{ uri: listing.preview_image }}
             style={styles.image}
             resizeMode="cover"
-            threshold={0.2} // Start loading when 20% of image is visible
             priority="high" // Main feed images should load immediately
           />
           {isPreloading && (
@@ -159,7 +158,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                   backgroundColor: colors.primary + '20',
                   color: colors.primary
                 }]}>
-                  {t(listing.property_type?.toLowerCase() as TranslationKey) || listing.property_type}
+                  {listing.property_type ? (
+                    t(listing.property_type.toLowerCase() as TranslationKey) ||
+                    listing.property_type.charAt(0).toUpperCase() + listing.property_type.slice(1).toLowerCase()
+                  ) : 'Apartment'}
                 </Text>
               </View>
 
@@ -239,7 +241,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
               {/* Price */}
               <Text style={[styles.price, { color: colors.text }]}>
-                ${listing.price_per_month.toLocaleString()}
+                {`$${listing.price_per_month.toLocaleString()} `}
                 <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>{translate('perMonth')}</Text>
               </Text>
             </Pressable>

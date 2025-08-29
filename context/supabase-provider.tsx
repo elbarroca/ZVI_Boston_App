@@ -24,18 +24,50 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    console.log('SupabaseProvider: Initializing...');
+
     // 1. Check for an initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('SupabaseProvider: Initial session loaded', !!session);
-      setSession(session);
-      setIsLoading(false);
-    });
+    const loadInitialSession = async () => {
+      try {
+        console.log('SupabaseProvider: Starting session load...');
+
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Session loading timeout')), 10000); // 10 second timeout
+        });
+
+        const sessionPromise = supabase.auth.getSession();
+        console.log('SupabaseProvider: Created session promise');
+
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+        console.log('SupabaseProvider: Promise race completed');
+
+        if (error) {
+          console.error('SupabaseProvider: Error getting initial session:', error);
+          console.error('SupabaseProvider: Error details:', JSON.stringify(error, null, 2));
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('SupabaseProvider: Session loaded successfully, hasSession:', !!session);
+        setSession(session);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('SupabaseProvider: Exception getting initial session:', error);
+        console.error('SupabaseProvider: Exception details:', JSON.stringify(error, null, 2));
+        // Even if there's an error, we should stop loading
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialSession();
 
     // 2. Listen for any future changes in auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        console.log('SupabaseProvider: Auth state changed', _event, !!session);
         setSession(session);
+        // Make sure loading is false when auth state changes
+        setIsLoading(false);
       }
     );
 

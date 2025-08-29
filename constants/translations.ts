@@ -89,6 +89,7 @@ export const translations = {
     'maxMonths': 'Max Months',
     'applyFilters': 'Apply Filters',
     'resetAll': 'Reset All',
+    'clearAll': 'Clear All', // Added for TourRequestModal
 
     // Error messages
     'selectDateTime': 'Please select at least one date and one time slot.',

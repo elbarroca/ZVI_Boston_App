@@ -245,11 +245,9 @@ export const useLazyImage = (imageUrl: string, threshold: number = 0.1, priority
             entries.forEach((entry) => {
               if (entry.isIntersecting && !isVisible) {
                 setIsVisible(true);
-                if (__DEV__) console.log(`LazyImage: Image became visible: ${imageUrl}`);
               } else if (entry.intersectionRatio > 0 && !isVisible) {
                 // More aggressive detection for carousel images
                 setIsVisible(true);
-                if (__DEV__) console.log(`LazyImage: Image partially visible (carousel mode): ${imageUrl}`);
               }
             });
           },
@@ -276,7 +274,6 @@ export const useLazyImage = (imageUrl: string, threshold: number = 0.1, priority
         setTimeout(() => {
           if (!isVisible && !hasLoaded) {
             setIsVisible(true);
-            if (__DEV__) console.log(`LazyImage: Fallback visibility trigger for: ${imageUrl}`);
           }
         }, fallbackDelay);
       }
@@ -335,7 +332,6 @@ class PersistentImageCache {
       this.initializeCache();
     } else {
       this.cacheDirectory = '';
-      if (__DEV__) console.log('PersistentImageCache: File system not available on web platform, using fallback mode');
     }
   }
 
@@ -347,7 +343,6 @@ class PersistentImageCache {
       const dirInfo = await FileSystem.getInfoAsync(this.cacheDirectory);
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(this.cacheDirectory, { intermediates: true });
-        if (__DEV__) console.log('PersistentImageCache: Created cache directory');
       }
 
       // Load existing cache index
@@ -369,7 +364,7 @@ class PersistentImageCache {
         const index = JSON.parse(indexData);
         this.cacheIndex = new Map(Object.entries(index));
 
-        if (__DEV__) console.log(`PersistentImageCache: Loaded ${this.cacheIndex.size} cached images`);
+
       }
     } catch (error) {
       if (__DEV__) console.error('PersistentImageCache: Failed to load cache index:', error);
@@ -435,6 +430,18 @@ class PersistentImageCache {
   async cacheImage(url: string): Promise<string | null> {
     if (!this.isSupported) return null; // Web fallback
 
+    // Validate URL before attempting to cache
+    if (!url || typeof url !== 'string') {
+      if (__DEV__) console.warn('PersistentImageCache: Invalid URL provided:', url);
+      return null;
+    }
+
+    // Skip blob URLs and other unsupported schemes
+    if (url.startsWith('blob:') || url.startsWith('data:') || !url.startsWith('http')) {
+      if (__DEV__) console.log(`PersistentImageCache: Skipping unsupported URL scheme: ${url}`);
+      return null;
+    }
+
     try {
       const cacheKey = this.generateCacheKey(url);
       const cachePath = this.getCachePath(cacheKey);
@@ -466,20 +473,33 @@ class PersistentImageCache {
       return { uri: url, isLocal: false };
     }
 
-    // First check if it's already cached
-    const cachedPath = await this.getCachedPath(url);
-    if (cachedPath) {
-      if (__DEV__) console.log(`PersistentImageCache: Serving from cache: ${url}`);
-      return { uri: cachedPath, isLocal: true };
+    // Validate URL before processing
+    if (!url || typeof url !== 'string') {
+      if (__DEV__) console.warn('PersistentImageCache: Invalid URL provided to getImageSource:', url);
+      return { uri: url, isLocal: false };
     }
 
-    // If not cached, return original URL and trigger background caching
-    if (__DEV__) console.log(`PersistentImageCache: Not cached, serving remote: ${url}`);
+    // Skip caching for blob URLs and other unsupported schemes
+    const isSupportedUrl = url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('data:');
 
-    // Start background caching (don't await)
-    this.cacheImage(url).catch(error => {
-      if (__DEV__) console.warn(`PersistentImageCache: Background caching failed for ${url}:`, error);
-    });
+    if (isSupportedUrl) {
+      // First check if it's already cached
+      const cachedPath = await this.getCachedPath(url);
+      if (cachedPath) {
+        if (__DEV__) console.log(`PersistentImageCache: Serving from cache: ${url}`);
+        return { uri: cachedPath, isLocal: true };
+      }
+    }
+
+    // If not cached (or not cacheable), return original URL and trigger background caching for supported URLs
+    if (__DEV__) console.log(`PersistentImageCache: ${isSupportedUrl ? 'Not cached' : 'Skipping cache for'}, serving remote: ${url}`);
+
+    // Start background caching only for supported URLs (don't await)
+    if (isSupportedUrl) {
+      this.cacheImage(url).catch(error => {
+        if (__DEV__) console.warn(`PersistentImageCache: Background caching failed for ${url}:`, error);
+      });
+    }
 
     return { uri: url, isLocal: false };
   }

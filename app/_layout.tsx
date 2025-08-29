@@ -4,8 +4,8 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { SupabaseProvider, useSupabaseAuth } from '@/context/supabase-provider';
 import { ThemeProvider } from '@/context/theme-provider';
 import { LanguageProvider } from '@/context/language-provider';
-import { useEffect } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View, StyleSheet, Text, Pressable } from 'react-native';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/config/supabase';
 
@@ -64,45 +64,92 @@ const InitialLayout = () => {
   const router = useRouter();
 
   useEffect(() => {
-    console.log('Layout: useEffect triggered', { isLoading, session: !!session, segments });
-
     // Handle OAuth callback when component mounts or segments change
     handleOAuthCallback();
 
     // 1. Wait until the session is loaded.
     if (isLoading) {
-      console.log('Layout: Still loading session...');
       return;
     }
 
     // 2. Determine if the user is currently in the main app (tabs) group.
     const inTabsGroup = segments[0] === '(tabs)';
-    console.log('Layout: Current segment:', segments[0], 'inTabsGroup:', inTabsGroup);
 
     // 3. Perform the redirect logic.
     if (session && !inTabsGroup) {
       // User is logged in but is not in the main app area.
       // This happens right after a successful login.
       // Redirect them to the main feed screen.
-      console.log('Layout: User authenticated, redirecting to tabs...');
       router.replace('/(tabs)');
     } else if (!session) {
       // User is not logged in.
       // Force them to the authentication screen.
       // This will also handle logout.
-      console.log('Layout: No session, redirecting to auth...');
       router.replace('/(auth)');
-    } else {
-      console.log('Layout: User is authenticated and in tabs, no redirect needed');
     }
   }, [session, isLoading, segments, router]);
 
   // While checking for a session, show a loading spinner.
   // This prevents a screen flash.
-  if (isLoading) {
+  // Add a timeout to prevent infinite loading (fallback after 15 seconds)
+  const [showFallback, setShowFallback] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    if (isLoading) {
+      const timer = setTimeout(() => {
+        setShowFallback(true);
+      }, 15000); // 15 seconds
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowFallback(false);
+      setRetryCount(0);
+    }
+  }, [isLoading]);
+
+  const handleRetry = () => {
+    console.log('User clicked retry, reloading session...');
+    setRetryCount(prev => prev + 1);
+    setShowFallback(false);
+    // Force a re-render by triggering the useEffect in SupabaseProvider
+    window.location.reload();
+  };
+
+  if (isLoading && !showFallback) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // Show fallback screen with retry option
+  if (showFallback) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: 'white', marginBottom: 20, textAlign: 'center' }}>
+          App is taking longer than usual to load.{'\n'}
+          This might be due to network issues or emulator performance.
+        </Text>
+        <Pressable
+          style={{
+            backgroundColor: '#007AFF',
+            paddingHorizontal: 20,
+            paddingVertical: 10,
+            borderRadius: 8,
+          }}
+          onPress={handleRetry}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>
+            Retry ({retryCount}/3)
+          </Text>
+        </Pressable>
+        {retryCount >= 3 && (
+          <Text style={{ color: 'red', marginTop: 20, textAlign: 'center' }}>
+            If the app still won't load, try restarting the emulator or checking your internet connection.
+          </Text>
+        )}
       </View>
     );
   }

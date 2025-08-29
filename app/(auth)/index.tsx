@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useGoogleSignIn, signInWithEmail, signUpWithEmail } from '@/lib/auth'; // Centralize auth functions
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, configureGoogleSignIn } from '@/lib/auth'; // Use new Google Sign-In function
 import GoogleIcon from '@/components/GoogleIcon'; // Import the new GoogleIcon component
 import { EmailAuthButton } from '@/components/ui/EmailAuthButton'; // Import the new EmailAuthButton component
 
@@ -18,7 +18,10 @@ export default function AuthScreen() {
   const [googleIconError, setGoogleIconError] = useState(false);
   const router = useRouter();
 
-  const { signInWithGoogle } = useGoogleSignIn();
+  // Configure Google Sign-In when component mounts
+  React.useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   const handleEmailAuth = async () => {
     const action = isSignUp ? signUpWithEmail : signInWithEmail;
@@ -43,8 +46,9 @@ export default function AuthScreen() {
         </Text>
       </View>
 
-      <View style={styles.formContainer}>
-        <Pressable
+      {/* <View style={styles.formContainer}> */}
+        {/* Google Sign-In Button */}
+        {/* <Pressable
           style={({ pressed, hovered }) => [
             styles.button,
             styles.googleButton,
@@ -52,14 +56,14 @@ export default function AuthScreen() {
             pressed && styles.buttonPressed,
           ]}
           onPress={async () => {
-            console.log('Starting Google sign-in...');
-            const result = await signInWithGoogle();
-            if (result) {
-              console.log('Google sign-in initiated successfully.');
-              // For OAuth, don't navigate explicitly - let the layout handle it
-              // The session will be detected from URL parameters
+            console.log('--- TAPPED GOOGLE SIGN IN BUTTON ---');
+            console.log('--- Calling NEW signInWithGoogle from @react-native-google-signin ---');
+            const data = await signInWithGoogle();
+            if (data) {
+              console.log('--- NEW Google sign-in successful ---');
+              // Navigation will be handled by the Supabase session change in _layout.tsx
             } else {
-              console.log('Google sign-in cancelled or failed.');
+              console.log('--- NEW Google sign-in failed or was cancelled ---');
             }
           }}
         >
@@ -71,11 +75,12 @@ export default function AuthScreen() {
             )}
             <Text style={styles.googleButtonText}>Continue with Google</Text>
           </View>
-        </Pressable>
+        </Pressable> */}
 
-        <Text style={styles.orText}>or</Text>
+        {/* <Text style={styles.orText}>or</Text> */}
 
-        <TextInput
+        {/* Email/Password Inputs */}
+        {/* <TextInput
           style={[styles.input, { marginBottom: 16 }]} // Added marginBottom
           placeholder="Email"
           value={email}
@@ -89,9 +94,9 @@ export default function AuthScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-        />
+        /> */}
 
-        <EmailAuthButton
+        {/* <EmailAuthButton
           onPress={handleEmailAuth}
           title={isSignUp ? 'Create Account' : 'Sign In'}
           buttonStyle={{
@@ -113,15 +118,15 @@ export default function AuthScreen() {
             textAlign: 'center',
           }}
           maxWidth={Platform.OS === 'web' ? 420 : screenWidth * 0.85}
-        />
+        /> */}
 
-        <Pressable onPress={() => setIsSignUp(!isSignUp)}>
+        {/* <Pressable onPress={() => setIsSignUp(!isSignUp)}>
           <Text style={styles.footerText}>
             {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
             <Text style={styles.linkText}>{isSignUp ? 'Sign In' : 'Sign Up'}</Text>
           </Text>
-        </Pressable>
-      </View>
+        </Pressable> */}
+      {/* </View> */}
     </ScrollView>
   );
 }

@@ -1,6 +1,6 @@
 // app/(tabs)/listings/[id].tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Image, Pressable, Alert, useWindowDimensions, I18nManager, Share } from 'react-native';
+import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Image, Pressable, Alert, useWindowDimensions, I18nManager, Share, Platform } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getListingById, getListingBySlugOrId, saveListing, unsaveListing, createTourRequest, createTourRequestWithValidation, getUserProfile, updateUserProfile, checkExistingTourRequest } from '@/lib/api';
@@ -32,20 +32,7 @@ export default function ListingDetailScreen() {
 
   const queryClient = useQueryClient();
 
-  // Debug: Track renders (only once)
-  const hasLogged = useRef(false);
-  useEffect(() => {
-    if (__DEV__ && !hasLogged.current) {
-      hasLogged.current = true;
-      console.log('=== ListingDetailScreen First Mount ===');
-      console.log('Raw params:', params);
-      console.log('SlugOrId:', slugOrId);
-      console.log('SlugOrId type:', typeof slugOrId);
-      console.log('SlugOrId length:', slugOrId?.length);
-      console.log('Theme:', theme);
-      console.log('========================');
-    }
-  }, [params, slugOrId, theme]);
+
 
   const { data: listing, isLoading, error } = useQuery({
     queryKey: ['listing', slugOrId],
@@ -88,6 +75,8 @@ export default function ListingDetailScreen() {
 
 
 
+
+
   // Profile update mutation - ONLY updates the profile
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: { phone_number?: string; updated_at: Date }) => {
@@ -123,6 +112,7 @@ export default function ListingDetailScreen() {
     // First, check if user already has an active tour request
     try {
       const existingTour = await checkExistingTourRequest(user.id, listing?.id!);
+
       if (existingTour) {
         const tourDate = new Date(existingTour.created_at).toLocaleDateString();
         Alert.alert(
@@ -161,7 +151,7 @@ export default function ListingDetailScreen() {
       const preferredTimesSummary = `Selected ${requestData.selected_dates.length} date${requestData.selected_dates.length > 1 ? 's' : ''} with ${requestData.selected_time_slots.length} time slot${requestData.selected_time_slots.length > 1 ? 's' : ''}`;
 
       // Insert the tour request with detailed data using the original function
-      await createTourRequest(requestData.user_id, requestData.listing_id, {
+      const dbResult = await createTourRequest(requestData.user_id, requestData.listing_id, {
         preferred_times: requestData.preferred_times,
         selected_dates: requestData.selected_dates,
         selected_time_slots: requestData.selected_time_slots,
@@ -169,22 +159,22 @@ export default function ListingDetailScreen() {
         contact_method: requestData.contact_method,
         preferred_times_summary: preferredTimesSummary,
         notes: requestData.notes,
-        priority_slot: requestData.priority_slot
+        priority_slot: requestData.priority_slots?.find(slot => slot.rank === 1)?.time
       });
 
-      // Return the data for confirmation modal
-      return {
+      // Return the data for confirmation modal - ensure proper TourConfirmationData structure
+      const confirmationData: TourConfirmationData = {
         dates: requestData.selected_dates,
         timeSlots: requestData.selected_time_slots,
         contactMethod: requestData.contact_method,
         phoneNumber: requestData.contact_phone,
         notes: requestData.notes,
-        prioritySlot: requestData.priority_slot
+        prioritySlot: requestData.priority_slots?.find(slot => slot.rank === 1)?.time
       };
+
+      return confirmationData;
     },
-    onSuccess: (data) => {
-      console.log('🎉 Tour request successful:', data);
-      console.log('📊 Tour request created successfully');
+    onSuccess: (data: TourConfirmationData) => {
       setModalVisible(false);
 
       // Invalidate and refetch tour requests query to update the settings page immediately
@@ -193,16 +183,9 @@ export default function ListingDetailScreen() {
       // Also invalidate the existing tour query to update the UI state
       queryClient.invalidateQueries({ queryKey: ['existing-tour', user?.id, slugOrId] });
 
-      // Show confirmation modal with submitted data (including notes)
+      // Show confirmation modal with submitted data
       setSubmittedTourData(data);
-      // Add small delay to ensure smooth modal transition
-      setTimeout(() => {
-        setShowConfirmationModal(true);
-        console.log('✅ Confirmation modal should now be visible:', {
-          showConfirmationModal: true,
-          submittedTourData: data
-        });
-      }, 100);
+      setShowConfirmationModal(true);
     },
     onError: (error) => {
       console.error('Tour request error:', error);
@@ -212,11 +195,7 @@ export default function ListingDetailScreen() {
 
   // Memoize image URLs to prevent unnecessary carousel re-renders
   const imageUrls = useMemo(() => {
-    const urls = listing?.image_urls || [];
-    if (__DEV__ && urls.length > 0) {
-      console.log('Memoized image URLs count:', urls.length);
-    }
-    return urls;
+    return listing?.image_urls || [];
   }, [listing?.image_urls]); // Only depend on image URLs
 
   // Reset saved status and check flag when slugOrId changes
@@ -249,7 +228,6 @@ export default function ListingDetailScreen() {
           setIsSaved(false);
         }
       } catch (error) {
-        console.log('Error checking saved status:', error);
         setIsSaved(false);
       }
     };
@@ -322,22 +300,23 @@ export default function ListingDetailScreen() {
     if (!listing) return;
 
     try {
-      const listingUrl = `${window.location.origin || 'http://localhost:8081'}/listings/${createListingUrl(listing.title, listing.id)}`;
-      const message = `Check out this ${listing.property_type}: ${listing.title} - ${listing.location_address}. ${listingUrl}`;
+      // Create a simple shareable message without requiring a full URL
+      const message = `Check out this ${listing.property_type || 'property'}: ${listing.title} - ${listing.location_address}. Price: $${listing.price_per_month.toLocaleString()}/month`;
 
       const result = await Share.share({
         message,
-        url: listingUrl, // For iOS
+        // Remove URL for now to avoid platform-specific issues
+        // url: listingUrl, // For iOS - commented out to avoid errors
       });
 
       if (result.action === Share.sharedAction) {
         if (result.activityType) {
           // Shared with activity type of result.activityType
         } else {
-          // Shared
+          // Shared successfully
         }
       } else if (result.action === Share.dismissedAction) {
-        // Dismissed
+        // User dismissed the share dialog
       }
     } catch (error) {
       console.error('Error sharing:', error);
@@ -444,13 +423,19 @@ export default function ListingDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: '', headerTransparent: true, headerTintColor: colors.text }} />
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.carouselContainer}>
           <ImageCarousel imageUrls={imageUrls} />
           <Pressable
             onPress={handleToggleSave}
             disabled={isSaveLoading}
             style={[styles.saveButton, { backgroundColor: colors.shadow }]}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
               name={isSaved ? 'heart' : 'heart-outline'}
@@ -521,7 +506,35 @@ export default function ListingDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Tour Request Modal */}
+      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+        <View style={styles.footerButtonsContainer}>
+          <Pressable
+            style={[
+              styles.requestButton,
+              { backgroundColor: existingTour ? colors.textMuted : colors.primary }
+            ]}
+            onPress={handleRequestTour}
+            disabled={!!existingTour}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            android_ripple={{ color: 'rgba(255, 255, 255, 0.2)' }}
+            pressRetentionOffset={{ top: 20, left: 20, right: 20, bottom: 20 }}
+          >
+            <Text style={styles.requestButtonText}>
+              🏠 {existingTour ? t('tourAlreadyRequested') : t('requestTour')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.shareButton, { backgroundColor: colors.background }]}
+            onPress={handleShare}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
+            pressRetentionOffset={{ top: 20, left: 20, right: 20, bottom: 20 }}
+          >
+            <Ionicons name="share-outline" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
+
       <TourRequestModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
@@ -531,7 +544,10 @@ export default function ListingDetailScreen() {
         userEmail={user?.email}
         userName={profile?.full_name}
         userPhone={profile?.phone_number}
-        onSubmit={handleSubmitTourRequest}
+        onSubmit={(data) => {
+          console.log('TourRequestModal onSubmit called with data:', data);
+          return handleSubmitTourRequest(data);
+        }}
         isSubmitting={createTourRequestMutation.isPending || updateProfileMutation.isPending}
       />
 
@@ -547,29 +563,6 @@ export default function ListingDetailScreen() {
         listingAddress={listing?.location_address || ''}
         userEmail={user?.email}
       />
-
-      <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
-        <View style={styles.footerButtonsContainer}>
-          <Pressable
-            style={[
-              styles.requestButton,
-              { backgroundColor: existingTour ? colors.textMuted : colors.primary }
-            ]}
-            onPress={handleRequestTour}
-            disabled={!!existingTour}
-          >
-            <Text style={styles.requestButtonText}>
-              🏠 {existingTour ? t('tourAlreadyRequested') : t('requestTour')}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.shareButton, { backgroundColor: colors.background }]}
-            onPress={handleShare}
-          >
-            <Ionicons name="share-outline" size={20} color={colors.text} />
-          </Pressable>
-        </View>
-      </View>
     </>
   );
 }
@@ -604,6 +597,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120, // Ensure content doesn't overlap with footer
   },
   carouselContainer: {
     position: 'relative',
@@ -713,6 +709,12 @@ const styles = StyleSheet.create({
   footer: {
     padding: 20,
     borderTopWidth: 1,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    elevation: 10, // Ensure footer stays on top on Android
   },
   footerButtonsContainer: {
     flexDirection: 'row',
@@ -734,7 +736,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 8, // Increased elevation for better touch detection
+    minHeight: 50, // Ensure minimum touchable height
   },
   shareButton: {
     padding: 12,
@@ -743,6 +746,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.1)',
+    minHeight: 44, // Ensure minimum touchable height for accessibility
+    minWidth: 44, // Ensure minimum touchable width for accessibility
   },
   requestButtonDisabled: {
     opacity: 0.7,

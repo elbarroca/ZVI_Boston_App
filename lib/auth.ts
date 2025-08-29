@@ -1,57 +1,66 @@
 // lib/auth.ts
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { supabase } from '@/config/supabase';
-import * as Google from 'expo-auth-session/providers/google'; // Use the specific Google provider
-import * as WebBrowser from 'expo-web-browser';
-import { Platform, Alert } from 'react-native';
-import React from 'react';
+import { Alert } from 'react-native';
 
-WebBrowser.maybeCompleteAuthSession();
-
-export const useGoogleSignIn = () => {
-  // Use the simpler, more reliable useAuthRequest for native
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+// Configure Google Sign-In (call this once, typically in your app startup)
+export const configureGoogleSignIn = () => {
+  GoogleSignin.configure({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+    // Add offlineAccess: true if you need a serverAuthCode for backend access
   });
+};
 
-  // This useEffect handles the response from Google
-  React.useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      supabase.auth.signInWithIdToken({
+// This function will be called from your Auth screen
+export const signInWithGoogle = async () => {
+  try {
+    console.log('--- Starting NEW Google Sign-In with @react-native-google-signin ---');
+
+    // 1. Check if the user has Google Play Services installed
+    await GoogleSignin.hasPlayServices();
+    console.log('--- Google Play Services available ---');
+
+    // 2. Start the native sign-in flow
+    const userInfo = await GoogleSignin.signIn();
+    console.log('--- Native Google Sign-In completed ---');
+
+    // 3. Check if we got user info and extract idToken
+    if (userInfo && userInfo.data && userInfo.data.idToken) {
+      console.log('--- Got ID token, signing in with Supabase ---');
+
+      // 4. Use the idToken to sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
-        token: id_token,
+        token: userInfo.data.idToken,
       });
-    }
-  }, [response]);
 
-  const signInWithGoogle = async (): Promise<boolean> => {
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      const result = await promptAsync();
-      // On native, promptAsync returns an object with type 'success' or 'cancel'
-      // We consider it a success if the type is 'success', and the useEffect above handles the actual Supabase sign-in.
-      return result?.type === 'success';
-    } else {
-      // For web, signInWithOAuth directly navigates, so we don't get a direct return value here.
-      // The session will be detected from URL parameters in the layout.
-      // We can assume that if it doesn't throw an error, it initiated successfully.
-      try {
-        await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/`,
-          },
-        });
-        return true; // Indicate that the OAuth flow was initiated
-      } catch (error) {
-        console.error("Error initiating Google OAuth on web:", error);
-        return false;
+      if (error) {
+        console.error('--- Supabase sign-in error:', error);
+        throw error;
       }
-    }
-  };
 
-  return { signInWithGoogle };
+      console.log('--- Supabase sign-in successful ---');
+      return data;
+    } else {
+      console.error('--- No ID token returned from Google ---');
+      throw new Error('Google Sign-In failed: No ID token returned.');
+    }
+  } catch (error: any) {
+    console.error('--- Google Sign-In Error:', error.code, error.message);
+
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      console.log('--- User cancelled the login flow ---');
+    } else if (error.code === statusCodes.IN_PROGRESS) {
+      console.log('--- Sign in is in progress already ---');
+      Alert.alert('Sign-In In Progress', 'Please wait for the current sign-in to complete.');
+    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      Alert.alert('Error', 'Google Play Services not available or outdated.');
+    } else {
+      // Some other error happened
+      Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+    }
+    return null;
+  }
 };
 
 // Email/Password authentication functions

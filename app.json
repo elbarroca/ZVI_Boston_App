@@ -11,44 +11,19 @@
       "**/*"
     ],
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.zvi.studenthousing",
-      "config": {
-        "usesNonExemptEncryption": false
-      },
-      "associatedDomains": [
-        "applinks:*.your-web-domain.com"
-      ],
-      "splash": {
-        "image": "./assets/splash.png",
-        "resizeMode": "cover",
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "backgroundColor": "#000000",
-          "resizeMode": "cover",
-          "image": "./assets/splash-dark.png"
-        }
-      }
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.zvi.studenthousing",
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBBgae_cwRrZqvI9jW2Y1UA2R7L7_SwhLE"
+        }
+      },
 
       "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "*.your-web-domain.com"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        },
         {
           "action": "VIEW",
           "data": [
@@ -71,8 +46,7 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "com.zvi.studenthousing",
-              "path": "/oauthredirect"
+              "scheme": "com.zvi.studenthousing"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -95,17 +69,11 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "@react-native-google-signin/google-signin",
       [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "This app uses location to show nearby listings on the map."
-        }
-      ],
-      [
-        "expo-maps",
-        {
-          "provider": "google",
-          "apiKey": "AIzaSyC3hXA5J9yJG7vtPpQsqXROXYiV0tlc2fo"
         }
       ]
     ],

@@ -216,7 +216,11 @@ export default function FeedScreen() {
           {/* Left side - Filter button */}
           <View style={styles.leftSection}>
             <Pressable
-              style={[styles.filterButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.filterButton,
+                { backgroundColor: colors.primary },
+                { alignSelf: 'flex-start' } // Ensure button only takes content width
+              ]}
               onPress={() => setFilterModalVisible(true)}
             >
               <Ionicons name="filter" size={20} color="white" />
@@ -475,8 +479,9 @@ const styles = StyleSheet.create({
     filterBarContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      flex: 1,
+      justifyContent: 'space-between', // Distribute items with space between them
+      // gap: 8, // Removed to ensure proper spacing with justifyContent: 'space-between'
+      // flex: 1, // Removed to allow content to dictate width, while children manage their own flex
     },
     leftSection: {
       flexDirection: 'row',
@@ -485,15 +490,21 @@ const styles = StyleSheet.create({
     rightSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginLeft: 'auto',
+      alignSelf: 'flex-start', // Ensure button only takes content width
+      // marginLeft: 'auto', // Removed as justifyContent: 'space-between' handles spacing
     },
     filterButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
-      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 25, // More rounded, pill-shaped
+      gap: 8,
+      elevation: 4, // Android shadow
+      shadowColor: '#000', // iOS shadow
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
     },
     filterButtonText: {
       color: 'white',
@@ -509,6 +520,7 @@ const styles = StyleSheet.create({
     },
     activeFiltersScroll: {
       flex: 1,
+      flexGrow: 1, // Ensure it takes up available space
     },
     activeFilterChip: {
       flexDirection: 'row',
@@ -548,13 +560,18 @@ const styles = StyleSheet.create({
     languageSelector: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 12,
+      paddingHorizontal: 14, // Slightly less padding to fit in line
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 25, // More rounded, pill-shaped
       gap: 6,
+      elevation: 4, // Android shadow
+      shadowColor: '#000', // iOS shadow
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
     },
     languageFlag: {
-      fontSize: 16,
+      fontSize: 18, // Slightly larger flag
     },
     languageText: {
       fontSize: 14,

@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/theme-provider';
@@ -25,7 +26,47 @@ export function TourConfirmationModal({
   const { t } = useLanguage();
   const colors = themeColors[theme];
 
-  if (!data) return null;
+  // If modal is not visible, don't render anything
+  if (!visible) {
+    return null;
+  }
+
+  // If no data is provided when visible, show a fallback
+  if (!data) {
+    return (
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onClose}
+        statusBarTranslucent={Platform.OS === 'android'}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={onClose}>
+            <View style={[styles.confirmationModalContent, { backgroundColor: colors.surface }]}>
+              <View style={styles.confirmationHeader}>
+                <Text style={[styles.confirmationTitle, { color: colors.text }]}>
+                  Tour Request Submitted
+                </Text>
+                <Pressable style={styles.confirmationCloseButton} onPress={onClose}>
+                  <Text style={styles.confirmationCloseText}>✕</Text>
+                </Pressable>
+              </View>
+              <Text style={[styles.confirmationSubtitle, { color: colors.textSecondary }]}>
+                Your tour request has been submitted successfully!
+              </Text>
+              <Pressable
+                style={[styles.confirmationButton, { backgroundColor: colors.primary }]}
+                onPress={onClose}
+              >
+                <Text style={styles.confirmationButtonText}>Okay</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -33,147 +74,157 @@ export function TourConfirmationModal({
       transparent={true}
       animationType="fade"
       onRequestClose={onClose}
-      style={{ zIndex: 9999 }}
+      statusBarTranslucent={Platform.OS === 'android'}
     >
-      <Pressable style={styles.modalBackdrop} onPress={onClose} />
-      <View style={[styles.confirmationModalContent, { backgroundColor: colors.surface }]}>
-        <View style={styles.confirmationHeader}>
-          <Text style={[styles.confirmationTitle, { color: colors.text }]}>
-            {t('tourRequestSubmitted')}
-          </Text>
-          <Pressable
-            style={styles.confirmationCloseButton}
-            onPress={onClose}
-          >
-            <Text style={styles.confirmationCloseText}>✕</Text>
-          </Pressable>
-        </View>
-
-        <Text style={[styles.confirmationSubtitle, { color: colors.textSecondary }]}>
-          {t('thankYouMessage')}
-        </Text>
-
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.confirmationDetails}>
-            <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
-              {t('yourSelectedSchedule')}
-            </Text>
-
-            {data.prioritySlot && (
-              <View style={styles.priorityConfirmation}>
-                <Ionicons name="star" size={16} color="#FFC700" />
-                <Text style={[styles.priorityConfirmationText, { color: colors.text }]}>
-                  <Text style={{ fontWeight: '600' }}>Top Choice:</Text> {data.prioritySlot}
+      <View style={styles.modalOverlay}>
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={onClose}
+        >
+          <View style={styles.modalContentContainer}>
+            <View style={[styles.confirmationModalContent, { backgroundColor: colors.surface }]}>
+              <View style={styles.confirmationHeader}>
+                <Text style={[styles.confirmationTitle, { color: colors.text }]}>
+                  {t('tourRequestSubmitted')}
                 </Text>
+                <Pressable
+                  style={styles.confirmationCloseButton}
+                  onPress={onClose}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text style={styles.confirmationCloseText}>✕</Text>
+                </Pressable>
               </View>
-            )}
 
-            <View style={styles.confirmationSchedule}>
-              {data.dates.map((date, dateIndex) => (
-                <View key={dateIndex} style={styles.confirmationDateRow}>
-                  <Text style={[styles.confirmationDateLabel, { color: colors.primary }]}>
-                    {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              <Text style={[styles.confirmationSubtitle, { color: colors.textSecondary }]}>
+                {t('thankYouMessage')}
+              </Text>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.confirmationDetails}>
+                  <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
+                    {t('yourSelectedSchedule')}
                   </Text>
-                  <View style={styles.confirmationTimeSlotsRow}>
-                    {data.timeSlots.map((timeSlot, timeIndex) => (
-                      <View key={timeIndex} style={[
-                        styles.confirmationTimeSlotChip,
-                        {
-                          backgroundColor: data.prioritySlot === timeSlot ? '#FFC700' + '30' : colors.primary + '15',
-                          borderColor: data.prioritySlot === timeSlot ? '#FFC700' : 'transparent',
-                          borderWidth: data.prioritySlot === timeSlot ? 1 : 0,
-                        }
-                      ]}>
-                        <Text style={[
-                          styles.confirmationTimeSlotText,
-                          {
-                            color: data.prioritySlot === timeSlot ? '#FFC700' : colors.primary,
-                            fontWeight: data.prioritySlot === timeSlot ? '600' : '500',
-                          }
-                        ]}>
-                          {timeSlot}
-                          {data.prioritySlot === timeSlot && ' ⭐'}
+
+                  {data.prioritySlot && (
+                    <View style={styles.priorityConfirmation}>
+                      <Ionicons name="star" size={16} color="#FFC700" />
+                      <Text style={[styles.priorityConfirmationText, { color: colors.text }]}>
+                        <Text style={{ fontWeight: '600' }}>Top Choice:</Text> {data.prioritySlot}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.confirmationSchedule}>
+                    {data.dates.map((date, dateIndex) => (
+                      <View key={dateIndex} style={styles.confirmationDateRow}>
+                        <Text style={[styles.confirmationDateLabel, { color: colors.primary }]}>
+                          {date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </Text>
+                        <View style={styles.confirmationTimeSlotsRow}>
+                          {data.timeSlots.map((timeSlot, timeIndex) => (
+                            <View key={timeIndex} style={[
+                              styles.confirmationTimeSlotChip,
+                              {
+                                backgroundColor: data.prioritySlot === timeSlot ? '#FFC700' + '30' : colors.primary + '15',
+                                borderColor: data.prioritySlot === timeSlot ? '#FFC700' : 'transparent',
+                                borderWidth: data.prioritySlot === timeSlot ? 1 : 0,
+                              }
+                            ]}>
+                              <Text style={[
+                                styles.confirmationTimeSlotText,
+                                {
+                                  color: data.prioritySlot === timeSlot ? '#FFC700' : colors.primary,
+                                  fontWeight: data.prioritySlot === timeSlot ? '600' : '500',
+                                }
+                              ]}>
+                                {timeSlot}
+                                {data.prioritySlot === timeSlot && ' ⭐'}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
                       </View>
                     ))}
                   </View>
+
+                  <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
+
+                  <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
+                    {t('contactInformation')}
+                  </Text>
+
+                  <View style={styles.confirmationContactInfo}>
+                    <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
+                      {t('email')} {userEmail}
+                    </Text>
+                    {data.contactMethod === 'both' && data.phoneNumber && (
+                      <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
+                        {t('phone')} {data.phoneNumber}
+                      </Text>
+                    )}
+                    {data.contactMethod === 'phone' && data.phoneNumber && (
+                      <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
+                        {t('phone')} {data.phoneNumber}
+                      </Text>
+                    )}
+                    <Text style={[styles.confirmationContactMethod, { color: colors.success }]}>
+                      {t('weWillContactBy')} {data.contactMethod === 'both' ? t('phoneAndEmail') :
+                                           data.contactMethod === 'phone' ? 'phone' : 'email'}
+                    </Text>
+                  </View>
+
+                                <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
+
+                    {data.notes && (
+                      <>
+                        <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
+                          {t('yourNotesAndRequests')}
+                        </Text>
+                        <Text style={[styles.confirmationNotes, {
+                          color: colors.textSecondary,
+                          backgroundColor: colors.background
+                        }]}>
+                          {data.notes}
+                        </Text>
+                        <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
+                      </>
+                    )}
+
+                    {/* Display notes from preferred_times_summary if no separate notes field */}
+                    {!data.notes && (
+                      <>
+                        <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
+                          {t('additionalInformation')}
+                        </Text>
+                        <Text style={[styles.confirmationNotes, {
+                          color: colors.textSecondary,
+                          backgroundColor: colors.background
+                        }]}>
+                          {t('notesStoredMessage')}
+                        </Text>
+                        <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
+                      </>
+                    )}
+
+                    <Text style={[styles.confirmationProperty, { color: colors.text }]}>
+                      {t('property')} {listingTitle}
+                    </Text>
+                    <Text style={[styles.confirmationAddress, { color: colors.textSecondary }]}>
+                      {t('location')} {listingAddress}
+                    </Text>
                 </View>
-              ))}
+              </ScrollView>
+
+              <Pressable
+                style={[styles.confirmationButton, { backgroundColor: colors.primary }]}
+                onPress={onClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.confirmationButtonText}>{t('perfect')}</Text>
+              </Pressable>
             </View>
-
-            <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
-
-            <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
-              {t('contactInformation')}
-            </Text>
-
-            <View style={styles.confirmationContactInfo}>
-              <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
-                {t('email')} {userEmail}
-              </Text>
-              {data.contactMethod === 'both' && data.phoneNumber && (
-                <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
-                  {t('phone')} {data.phoneNumber}
-                </Text>
-              )}
-              {data.contactMethod === 'phone' && data.phoneNumber && (
-                <Text style={[styles.confirmationContactText, { color: colors.textSecondary }]}>
-                  {t('phone')} {data.phoneNumber}
-                </Text>
-              )}
-              <Text style={[styles.confirmationContactMethod, { color: colors.success }]}>
-                {t('weWillContactBy')} {data.contactMethod === 'both' ? t('phoneAndEmail') :
-                                     data.contactMethod === 'phone' ? 'phone' : 'email'}
-              </Text>
-            </View>
-
-                          <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
-
-              {data.notes && (
-                <>
-                  <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
-                    {t('yourNotesAndRequests')}
-                  </Text>
-                  <Text style={[styles.confirmationNotes, {
-                    color: colors.textSecondary,
-                    backgroundColor: colors.background
-                  }]}>
-                    {data.notes}
-                  </Text>
-                  <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
-                </>
-              )}
-
-              {/* Display notes from preferred_times_summary if no separate notes field */}
-              {!data.notes && (
-                <>
-                  <Text style={[styles.confirmationSectionTitle, { color: colors.text }]}>
-                    {t('additionalInformation')}
-                  </Text>
-                  <Text style={[styles.confirmationNotes, {
-                    color: colors.textSecondary,
-                    backgroundColor: colors.background
-                  }]}>
-                    {t('notesStoredMessage')}
-                  </Text>
-                  <View style={[styles.confirmationSeparator, { backgroundColor: colors.border }]} />
-                </>
-              )}
-
-              <Text style={[styles.confirmationProperty, { color: colors.text }]}>
-                {t('property')} {listingTitle}
-              </Text>
-              <Text style={[styles.confirmationAddress, { color: colors.textSecondary }]}>
-                {t('location')} {listingAddress}
-              </Text>
           </View>
-        </ScrollView>
-
-        <Pressable
-          style={[styles.confirmationButton, { backgroundColor: colors.primary }]}
-          onPress={onClose}
-        >
-          <Text style={styles.confirmationButtonText}>{t('perfect')}</Text>
         </Pressable>
       </View>
     </Modal>
@@ -181,16 +232,41 @@ export function TourConfirmationModal({
 }
 
 const styles = StyleSheet.create({
-  modalBackdrop: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    padding: 20,
   },
   confirmationModalContent: {
     backgroundColor: 'white',
     padding: 24,
     borderRadius: 20,
-    margin: 20,
     maxHeight: '80%',
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 15,
   },
   confirmationHeader: {
     flexDirection: 'row',

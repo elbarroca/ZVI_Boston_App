@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "772440670648",
+    "project_id": "test-ae1a0",
+    "storage_bucket": "test-ae1a0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:772440670648:android:cc92bdc847651fde084f4d",
+        "android_client_info": {
+          "package_name": "com.zvi.studenthousing"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKXzL_5s1ZXdPabVJPBfxs2AHs5Yg1Jek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

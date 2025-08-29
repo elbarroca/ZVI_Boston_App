@@ -1,6 +1,6 @@
 // components/ImageCarousel.tsx
 import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
-import { View, useWindowDimensions, StyleSheet, Text, ActivityIndicator, Modal, Pressable, Dimensions } from 'react-native';
+import { View, useWindowDimensions, StyleSheet, Text, ActivityIndicator, Modal, Pressable, Dimensions, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,21 +21,42 @@ type ImageCarouselProps = {
 
 export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCarouselProps) {
   const { width, height } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('screen');
   const scrollX = useSharedValue(0);
-
-  // Store valid imageUrls in a ref to avoid dependency issues
-  const imageUrlsRef = useRef<string[] | null>(null);
-
-  // Only update the ref when we have valid imageUrls
-  if (imageUrls && Array.isArray(imageUrls) && (imageUrls?.length ?? 0) > 0) {
-    imageUrlsRef.current = imageUrls;
-  }
 
   // Early return if imageUrls is not available yet
   if (!imageUrls || !Array.isArray(imageUrls)) {
     return (
       <View style={[styles.container, styles.placeholderContainer]}>
         <Text style={styles.noImagesText}>Loading images...</Text>
+      </View>
+    );
+  }
+
+  // Filter out invalid URLs and ensure we have valid image URLs
+  const validImageUrls = imageUrls.filter(url =>
+    url && typeof url === 'string' && (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:'))
+  );
+
+  // Store valid imageUrls in a ref to avoid dependency issues
+  const imageUrlsRef = useRef<string[] | null>(null);
+
+  // Only update the ref when we have valid imageUrls
+  if (validImageUrls && validImageUrls.length > 0) {
+    imageUrlsRef.current = validImageUrls;
+  }
+
+  // If no valid URLs, show placeholder
+  if (validImageUrls.length === 0) {
+    return (
+      <View style={[styles.container, styles.placeholderContainer]}>
+        <Text style={styles.noImagesText}>No Images Available</Text>
+        {__DEV__ && (
+          <>
+            <Text style={styles.debugText}>Debug: Received {imageUrls.length} URLs</Text>
+            <Text style={styles.debugText}>Valid URLs: {validImageUrls.length}</Text>
+          </>
+        )}
       </View>
     );
   }
@@ -48,6 +69,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   const fullScreenScrollX = useSharedValue(0);
+  const fullScreenFlatListRef = useRef<Animated.FlatList<any>>(null);
 
   // Calculate current page index for animated dots
   const currentPageIndex = useDerivedValue(() => {
@@ -55,16 +77,15 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   }, [scrollX, width]);
 
   const fullScreenCurrentPageIndex = useDerivedValue(() => {
-    return Math.round(fullScreenScrollX.value / width);
-  }, [fullScreenScrollX, width]);
+    return Math.round(fullScreenScrollX.value / screenWidth);
+  }, [fullScreenScrollX, screenWidth]);
 
   // Create animated styles for pagination dots - fixed number of hooks to avoid violations
   const MAX_IMAGES = 20; // Maximum expected images to avoid too many hooks
   const dotAnimatedStyles = Array.from({ length: MAX_IMAGES }, (_, index) => {
     return useAnimatedStyle(() => {
       // Only animate if this index is valid for current images
-      const currentImageUrls = imageUrlsRef.current;
-      if (!currentImageUrls || !Array.isArray(currentImageUrls) || index >= currentImageUrls.length) {
+      if (index >= validImageUrls.length) {
         return {
           opacity: 0.4,
           transform: [{ scale: 0.8 }],
@@ -109,8 +130,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   const fullScreenDotAnimatedStyles = Array.from({ length: MAX_IMAGES }, (_, index) => {
     return useAnimatedStyle(() => {
       // Only animate if this index is valid for current images
-      const currentImageUrls = imageUrlsRef.current;
-      if (!currentImageUrls || !Array.isArray(currentImageUrls) || index >= currentImageUrls.length) {
+      if (index >= validImageUrls.length) {
         return {
           opacity: 0.4,
           transform: [{ scale: 0.8 }],
@@ -122,9 +142,9 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
 
       const isActive = fullScreenCurrentPageIndex.value === index;
       const inputRange = [
-        (index - 1) * width,
-        index * width,
-        (index + 1) * width
+        (index - 1) * screenWidth,
+        index * screenWidth,
+        (index + 1) * screenWidth
       ];
 
       const opacity = interpolate(
@@ -151,48 +171,22 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
     });
   });
 
-  // Debug logging
-  const hasLogged = useRef(false);
-  useEffect(() => {
-    if (__DEV__ && !hasLogged.current) {
-      hasLogged.current = true;
-      console.log('=== ImageCarousel Debug ===');
-      console.log('Image URLs received:', imageUrls);
-      console.log('Number of images:', imageUrls?.length || 0);
-      console.log('Image URLs type:', typeof imageUrls);
-      console.log('Is array?', Array.isArray(imageUrls));
-      if (imageUrls && Array.isArray(imageUrls) && (imageUrls?.length ?? 0) > 0) {
-        imageUrls.forEach((url, index) => {
-          console.log(`Image ${index + 1}:`, url);
-        });
-      }
-      console.log('========================');
-    }
-  }, []); // No dependencies - only run once
-
   // Preload images for instant loading performance
   useEffect(() => {
-    const currentImageUrls = imageUrlsRef.current;
-    if (currentImageUrls && Array.isArray(currentImageUrls) && currentImageUrls.length > 0) {
-      if (__DEV__) console.log(`ImageCarousel: Starting preload for ${currentImageUrls.length} images`);
-
+    if (validImageUrls.length > 0) {
       // Preload first 5 images with high/normal priority for better carousel experience
-      const preloadPromises = currentImageUrls.slice(0, Math.min(5, currentImageUrls.length)).map((url, index) => {
+      const preloadPromises = validImageUrls.slice(0, Math.min(5, validImageUrls.length)).map((url, index) => {
         return imageCache.preloadImage(url, index === 0 ? 'high' : 'normal');
       });
 
       Promise.all(preloadPromises).then(() => {
-        if (__DEV__) console.log('ImageCarousel: High priority preloading completed');
-
         // Preload remaining images with normal priority
-        if (currentImageUrls.length > 3) {
-          const remainingPromises = currentImageUrls.slice(3).map(url =>
+        if (validImageUrls.length > 3) {
+          const remainingPromises = validImageUrls.slice(3).map(url =>
             imageCache.preloadImage(url, 'normal')
           );
           return Promise.all(remainingPromises);
         }
-      }).then(() => {
-        if (__DEV__) console.log('ImageCarousel: All preloading completed');
       }).catch((error) => {
         if (__DEV__) console.warn('ImageCarousel: Preloading failed:', error);
       });
@@ -207,9 +201,8 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   // Full-screen scroll handler
   const fullScreenScrollHandler = useAnimatedScrollHandler(event => {
     fullScreenScrollX.value = event.contentOffset.x;
-    const index = Math.round(event.contentOffset.x / width);
-    const currentImageUrls = imageUrlsRef.current;
-    if (currentImageUrls && Array.isArray(currentImageUrls) && index !== currentImageIndex && index >= 0 && index < currentImageUrls.length) {
+    const index = Math.round(event.contentOffset.x / screenWidth);
+    if (index !== currentImageIndex && index >= 0 && index < validImageUrls.length) {
       runOnJS(setCurrentImageIndex)(index);
     }
   });
@@ -217,15 +210,42 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   // Handle opening full-screen view
   const openFullScreen = useCallback((index: number) => {
     // Safety check using ref value
-    const currentImageUrls = imageUrlsRef.current;
-    if (!currentImageUrls || !Array.isArray(currentImageUrls) || index < 0 || index >= currentImageUrls.length) {
+    if (index < 0 || index >= validImageUrls.length) {
+      if (__DEV__) console.warn(`ImageCarousel: Invalid index ${index}, valid range: 0-${validImageUrls.length - 1}`);
       return;
+    }
+
+    if (__DEV__) {
+      console.log(`ImageCarousel: Opening full-screen for image ${index + 1}/${validImageUrls.length}`);
+      console.log(`ImageCarousel: Image URI: ${validImageUrls[index]}`);
     }
 
     setCurrentImageIndex(index);
     setIsFullScreen(true);
-    fullScreenScrollX.value = index * width;
-  }, [width]);
+    fullScreenScrollX.value = index * screenWidth;
+  }, [screenWidth, validImageUrls]);
+
+  // Scroll to the correct image when full-screen opens
+  useEffect(() => {
+    if (isFullScreen && validImageUrls.length > 0 && fullScreenFlatListRef.current && currentImageIndex >= 0) {
+      // Single delayed scroll attempt for better Android reliability
+      const timer = setTimeout(() => {
+        if (fullScreenFlatListRef.current && isFullScreen && currentImageIndex < validImageUrls.length) {
+          try {
+            fullScreenFlatListRef.current.scrollToOffset({
+              offset: currentImageIndex * screenWidth,
+              animated: false, // No animation for immediate positioning
+            });
+            if (__DEV__) console.log(`ImageCarousel: Scrolled to image ${currentImageIndex + 1}`);
+          } catch (error) {
+            if (__DEV__) console.warn(`ImageCarousel: Scroll failed:`, error);
+          }
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isFullScreen, currentImageIndex, screenWidth, validImageUrls.length]);
 
   // Handle closing full-screen view
   const closeFullScreen = useCallback(() => {
@@ -235,8 +255,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   // Enhanced image load handler with state management
   const handleImageLoad = useCallback((index: number) => {
     // Safety check using ref value
-    const currentImageUrls = imageUrlsRef.current;
-    if (!currentImageUrls || !Array.isArray(currentImageUrls) || index < 0 || index >= currentImageUrls.length) {
+    if (index < 0 || index >= validImageUrls.length) {
       return;
     }
 
@@ -252,19 +271,12 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
       newSet.add(index);
       return newSet;
     });
-
-    // Throttle logging to prevent spam - only log once per image
-    if (__DEV__ && !loadedImages.has(index)) {
-      const cached = imageCache.isDiskCached(currentImageUrls[index]) || imageCache.isMemoryCached(currentImageUrls[index]);
-      console.log(`ImageCarousel: Successfully loaded image ${index + 1}${cached ? ' (from cache)' : ''}`);
-    }
-  }, [loadedImages]);
+  }, [validImageUrls]);
 
   // Enhanced image error handler with retry logic
   const handleImageError = useCallback((index: number, error: any) => {
     // Safety check using ref value
-    const currentImageUrls = imageUrlsRef.current;
-    if (!currentImageUrls || !Array.isArray(currentImageUrls) || index < 0 || index >= currentImageUrls.length) {
+    if (index < 0 || index >= validImageUrls.length) {
       return;
     }
 
@@ -281,13 +293,8 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
       return newSet;
     });
 
-    // Throttle error logging - only log once per image
-    if (__DEV__ && !failedImages.has(index)) {
-      console.error(`ImageCarousel: Failed to load image ${index + 1}:`, error);
-    }
-
     // Auto-retry with a different URL if available (for network resilience)
-    const currentUrl = currentImageUrls[index];
+    const currentUrl = validImageUrls[index];
     if (currentUrl && !retryUrls[index] && !failedImages.has(index)) {
       // Try to create a retry URL (add a cache-busting parameter)
       const retryUrl = `${currentUrl}${currentUrl.includes('?') ? '&' : '?'}retry=${Date.now()}`;
@@ -295,23 +302,22 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
 
       // Retry after a short delay
       setTimeout(() => {
-        if (__DEV__) console.log(`ImageCarousel: Retrying image ${index + 1} with: ${retryUrl}`);
+        // Retry logic without logging
       }, 1000);
     }
-  }, [retryUrls, failedImages]);
+  }, [retryUrls, failedImages, validImageUrls]);
 
   // If there are no images, show a clean placeholder.
-  const currentImageUrls = imageUrlsRef.current;
-  if (currentImageUrls && Array.isArray(currentImageUrls) && currentImageUrls.length === 0) {
+  if (validImageUrls.length === 0) {
     return (
       <View style={[styles.container, styles.placeholderContainer]}>
         <Text style={styles.noImagesText}>No Images Available</Text>
         {__DEV__ && (
           <>
             <Text style={styles.debugText}>Debug: No images provided</Text>
-            <Text style={styles.debugText}>Received: {JSON.stringify(currentImageUrls)}</Text>
-            <Text style={styles.debugText}>Type: {typeof currentImageUrls}</Text>
-            <Text style={styles.debugText}>Is Array: {Array.isArray(currentImageUrls) ? 'Yes' : 'No'}</Text>
+            <Text style={styles.debugText}>Received: {JSON.stringify(validImageUrls)}</Text>
+            <Text style={styles.debugText}>Type: {typeof validImageUrls}</Text>
+            <Text style={styles.debugText}>Is Array: {Array.isArray(validImageUrls) ? 'Yes' : 'No'}</Text>
           </>
         )}
       </View>
@@ -319,12 +325,12 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   }
 
   // Debug mode: show simple image list instead of carousel
-  if (debugMode) {
+  if (debugMode && __DEV__) {
     return (
       <View style={styles.debugContainer}>
         <Text style={styles.debugTitle}>ImageCarousel Debug Mode</Text>
-        <Text style={styles.debugInfo}>Images: {(currentImageUrls && Array.isArray(currentImageUrls) ? currentImageUrls.length : 0)}</Text>
-        {currentImageUrls && currentImageUrls.map((url, index) => (
+        <Text style={styles.debugInfo}>Images: {validImageUrls.length}</Text>
+        {validImageUrls.map((url, index) => (
           <View key={index} style={styles.debugImageContainer}>
             <Text style={styles.debugImageText}>Image {index + 1}</Text>
             <Text style={styles.debugUrlText} numberOfLines={1}>{url}</Text>
@@ -332,15 +338,6 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
               source={{ uri: url }}
               style={styles.debugImage}
               resizeMode="cover"
-              onLoadStart={() => {
-                if (__DEV__) console.log(`Debug: Started loading image ${index + 1}:`, url);
-              }}
-              onLoad={() => {
-                if (__DEV__) console.log(`Debug: Successfully loaded image ${index + 1}:`, url);
-              }}
-              onError={(error) => {
-                if (__DEV__) console.error(`Debug: Failed to load image ${index + 1}:`, url, error.nativeEvent);
-              }}
             />
           </View>
         ))}
@@ -351,7 +348,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
   return (
     <View style={styles.container}>
       <Animated.FlatList
-        data={currentImageUrls}
+        data={validImageUrls}
         keyExtractor={(item, index) => `carousel-image-${index}`}
         horizontal
         pagingEnabled
@@ -363,7 +360,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
             style={{ width, height: 300 }}
             onPress={() => {
               // Safety check before opening full screen
-              if (currentImageUrls && Array.isArray(currentImageUrls) && index >= 0 && index < currentImageUrls.length) {
+              if (validImageUrls && index >= 0 && index < validImageUrls.length) {
                 openFullScreen(index);
               }
             }}
@@ -373,7 +370,6 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
               style={styles.image}
               resizeMode="cover"
               priority={index === 0 ? 'high' : index <= 2 ? 'normal' : 'low'} // First 3 images load immediately, others lazy
-              threshold={0.1}
               isCarouselImage={true} // Mark as carousel image for better loading
               onLoad={() => handleImageLoad(index)}
               onError={(error) => handleImageError(index, error.nativeEvent)}
@@ -384,7 +380,7 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
 
       {/* Pagination Dots */}
       <View style={styles.paginationContainer}>
-        {dotAnimatedStyles.slice(0, imageUrls?.length || 0).map((dotStyle, index) => (
+        {dotAnimatedStyles.slice(0, validImageUrls.length).map((dotStyle, index) => (
           <Animated.View
             key={`dot-${index}`}
             style={[styles.dot, dotStyle]}
@@ -396,10 +392,18 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
       <Modal
         visible={isFullScreen}
         transparent={false}
-        animationType="fade"
+        animationType={Platform.OS === 'android' ? 'slide' : 'fade'}
         onRequestClose={closeFullScreen}
+        statusBarTranslucent={Platform.OS === 'android'}
+        hardwareAccelerated={true}
       >
         <View style={styles.fullScreenContainer}>
+          {(() => {
+            if (isFullScreen && __DEV__) {
+              console.log(`ImageCarousel: Modal rendering with ${validImageUrls.length} images, current index: ${currentImageIndex}`);
+            }
+            return null;
+          })()}
           {/* Close Button */}
           <Pressable
             style={styles.closeButton}
@@ -410,42 +414,68 @@ export default function ImageCarousel({ imageUrls, debugMode = false }: ImageCar
 
           {/* Full-Screen Image Carousel */}
           <Animated.FlatList
-            data={currentImageUrls}
+            ref={fullScreenFlatListRef}
+            data={validImageUrls}
             keyExtractor={(item, index) => `fullscreen-image-${index}`}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onScroll={fullScreenScrollHandler}
             scrollEventThrottle={16}
-            initialScrollIndex={currentImageIndex}
+            initialNumToRender={1}
+            maxToRenderPerBatch={1}
+            windowSize={3}
             getItemLayout={(data, index) => ({
-              length: width,
-              offset: width * index,
+              length: screenWidth,
+              offset: screenWidth * index,
               index,
             })}
-            renderItem={({ item, index }) => (
-              <View style={{ width, height }}>
-                <Image
-                  source={{ uri: item }}
-                  style={styles.fullScreenImage}
-                  resizeMode="contain"
-                  onLoad={() => handleImageLoad(index)}
-                  onError={(error) => handleImageError(index, error.nativeEvent)}
-                />
-              </View>
-            )}
+            onScrollToIndexFailed={info => {
+              const wait = new Promise(resolve => setTimeout(resolve, 500));
+              wait.then(() => {
+                if (fullScreenFlatListRef.current) {
+                  fullScreenFlatListRef.current.scrollToOffset({ 
+                    offset: screenWidth * info.index, 
+                    animated: false 
+                  });
+                }
+              });
+            }}
+            renderItem={({ item, index }) => {
+              if (__DEV__) {
+                console.log(`ImageCarousel: Rendering fullscreen item ${index + 1}/${validImageUrls.length}: ${item}`);
+                console.log(`ImageCarousel: Screen dimensions: ${screenWidth}x${screenHeight}`);
+              }
+              return (
+                <View style={{
+                  width: screenWidth,
+                  height: screenHeight,
+                  backgroundColor: 'black',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  position: 'relative'
+                }}>
+                  <FullScreenImage
+                    uri={item}
+                    index={index}
+                    onLoad={() => handleImageLoad(index)}
+                    onError={(error) => handleImageError(index, error.nativeEvent)}
+                  />
+                </View>
+              );
+            }}
           />
 
           {/* Image Counter */}
           <View style={styles.imageCounter}>
             <Text style={styles.imageCounterText}>
-              {currentImageIndex + 1} / {(currentImageUrls && Array.isArray(currentImageUrls) ? currentImageUrls.length : 0)}
+              {currentImageIndex + 1} / {validImageUrls.length}
             </Text>
           </View>
 
           {/* Full-Screen Pagination Dots */}
           <View style={styles.fullScreenPagination}>
-            {fullScreenDotAnimatedStyles.slice(0, imageUrls?.length || 0).map((dotStyle, index) => (
+            {fullScreenDotAnimatedStyles.slice(0, validImageUrls.length).map((dotStyle, index) => (
               <Animated.View
                 key={`fullscreen-dot-${index}`}
                 style={[styles.dot, dotStyle]}
@@ -547,15 +577,25 @@ const styles = StyleSheet.create({
   fullScreenContainer: {
     flex: 1,
     backgroundColor: 'black',
+    width: '100%',
+    height: '100%',
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 50 : 20,
     right: 20,
     zIndex: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   fullScreenImage: {
     width: '100%',
@@ -584,6 +624,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+  },
+  fullScreenImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenLoadingText: {
+    color: '#ffffff',
+    fontSize: 16,
+    marginTop: 12,
+    fontWeight: '500',
+  },
+  fullScreenErrorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenErrorText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  fullScreenErrorSubtext: {
+    color: '#ffffff',
+    fontSize: 14,
+    marginTop: 4,
+    opacity: 0.8,
   },
 
   // Loading and error states
@@ -631,7 +714,82 @@ const styles = StyleSheet.create({
   },
 });
 
-// LazyImage Component with Persistent Caching
+// Simplified FullScreenImage Component
+const FullScreenImage: React.FC<{
+  uri: string;
+  index: number;
+  onLoad?: () => void;
+  onError?: (error: any) => void;
+}> = React.memo(({ uri, index, onLoad, onError }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
+  const handleLoadStart = useCallback(() => {
+    setIsLoading(true);
+    setHasError(false);
+    if (__DEV__) console.log(`FullScreenImage: Load started for image ${index + 1}:`, uri);
+  }, [index, uri]);
+
+  const handleLoad = useCallback(() => {
+    setIsLoading(false);
+    setHasError(false);
+    onLoad?.();
+    if (__DEV__) console.log(`FullScreenImage: Successfully loaded image ${index + 1}`);
+  }, [onLoad, index]);
+
+  const handleError = useCallback((error: any) => {
+    setIsLoading(false);
+    setHasError(true);
+    onError?.(error);
+    if (__DEV__) console.error(`FullScreenImage: Failed to load image ${index + 1}:`, error.nativeEvent);
+  }, [onError, index]);
+
+  if (__DEV__) {
+    console.log(`FullScreenImage[${index + 1}]: Rendering with URI:`, uri);
+  }
+
+  return (
+    <View style={styles.fullScreenImageContainer}>
+      <Image
+        key={`fullscreen-${index}-${retryKey}`}
+        source={{ uri }}
+        style={styles.fullScreenImage}
+        resizeMode="contain"
+        onLoadStart={handleLoadStart}
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <View style={styles.fullScreenLoadingOverlay}>
+          <ActivityIndicator size="large" color="#ffffff" />
+          <Text style={styles.fullScreenLoadingText}>Loading image {index + 1}...</Text>
+        </View>
+      )}
+
+      {/* Error state with retry */}
+      {hasError && (
+        <Pressable 
+          style={styles.fullScreenErrorOverlay}
+          onPress={() => {
+            if (__DEV__) console.log(`FullScreenImage: Retrying image ${index + 1}`);
+            setHasError(false);
+            setIsLoading(true);
+            setRetryKey(prev => prev + 1);
+          }}
+        >
+          <Ionicons name="image-outline" size={48} color="#ffffff" />
+          <Text style={styles.fullScreenErrorText}>Image {index + 1} failed to load</Text>
+          <Text style={styles.fullScreenErrorSubtext}>Tap to retry • {uri.substring(0, 50)}...</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+});
+
+// Simplified LazyImage Component for better reliability
 export const LazyImage: React.FC<{
   source: { uri: string };
   style: any;
@@ -639,7 +797,6 @@ export const LazyImage: React.FC<{
   onLoad?: () => void;
   onError?: (error: any) => void;
   placeholder?: React.ReactNode;
-  threshold?: number;
   priority?: 'high' | 'normal' | 'low'; // Priority for loading
   isCarouselImage?: boolean; // Whether this image is in a carousel
 }> = React.memo(({
@@ -649,111 +806,132 @@ export const LazyImage: React.FC<{
   onLoad,
   onError,
   placeholder,
-  threshold = 0.1,
   priority = 'normal',
   isCarouselImage = false
 }) => {
-  const [imageSource, setImageSource] = useState<{ uri: string; isLocal?: boolean }>({ uri: source.uri });
-  const [isImageReady, setIsImageReady] = useState(false);
-  const [isLoadingFromCache, setIsLoadingFromCache] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [imageSource, setImageSource] = useState<{ uri: string }>(source);
 
-
-  const {
-    isVisible,
-    hasLoaded,
-    isLoading,
-    imageRef,
-    shouldLoad,
-    handleLoadStart,
-    handleLoad,
-    handleError,
-  } = useLazyImage(source.uri, threshold, priority);
-
-  // Load image from persistent cache when component mounts
+  // Debug logging for image loading
   useEffect(() => {
-    const loadImageFromCache = async () => {
-      if (isLoadingFromCache) return; // Prevent multiple simultaneous cache loads
-
-      setIsLoadingFromCache(true);
-      try {
-        const cachedSource = await persistentImageCache.getImageSource(source.uri);
-        setImageSource(cachedSource);
-
-        if (__DEV__ && cachedSource.isLocal) {
-          console.log(`LazyImage: Using cached image: ${source.uri}`);
-        }
-      } catch (error) {
-        if (__DEV__) console.warn(`LazyImage: Failed to load from cache: ${source.uri}`, error);
-      } finally {
-        setIsLoadingFromCache(false);
-      }
-    };
-
-    // Only load from cache if we don't already have a cached source and not already loading
-    if (imageSource.uri === source.uri && !isLoadingFromCache) {
-      loadImageFromCache();
+    if (__DEV__) {
+      console.log('LazyImage: Loading image:', source.uri);
+      console.log('LazyImage: Priority:', priority);
+      console.log('LazyImage: Is carousel image:', isCarouselImage);
     }
-  }, [source.uri, imageSource.uri, isLoadingFromCache]);
+  }, [source.uri, priority, isCarouselImage]);
 
-  const handleImageLoad = useCallback(() => {
-    if (isImageReady) return; // Prevent duplicate calls
+  const handleLoadStart = useCallback(() => {
+    setIsLoading(true);
+    setHasError(false);
+    if (__DEV__) console.log('LazyImage: Load started for:', source.uri);
+  }, [source.uri]);
 
-    setIsImageReady(true);
-    handleLoad();
+  const handleLoad = useCallback(() => {
+    setIsLoading(false);
+    setHasError(false);
     onLoad?.();
-  }, [isImageReady, handleLoad, onLoad]);
+    if (__DEV__) console.log('LazyImage: Successfully loaded:', source.uri);
+  }, [onLoad, source.uri]);
 
-  const handleImageError = useCallback((error: any) => {
-    if (isImageReady) return; // Prevent duplicate calls
-
-    setIsImageReady(true); // Mark as ready even on error to prevent further attempts
-    handleError();
+  const handleError = useCallback((error: any) => {
+    setIsLoading(false);
+    setHasError(true);
     onError?.(error);
-  }, [isImageReady, handleError, onError]);
+    if (__DEV__) console.error('LazyImage: Failed to load:', source.uri, error.nativeEvent);
+  }, [onError, source.uri]);
 
-  // Priority loading logic - be more aggressive for carousel images
-  const shouldUseLazyLoading = priority !== 'high' && !isCarouselImage;
-
-  // Show placeholder if image is not visible or not loaded (only for non-priority images)
-  // For carousel images, be more aggressive about loading
-  if (shouldUseLazyLoading && (!shouldLoad)) {
+  // For carousel images, use original source directly (simplified approach)
+  if (isCarouselImage) {
     return (
-      <View
-        ref={imageRef}
-        style={[style, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}
-      >
-        {placeholder || (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Ionicons name="image-outline" size={32} color="#d1d5db" />
+      <View style={style}>
+        <Image
+          source={source}
+          style={style}
+          resizeMode={resizeMode}
+          onLoadStart={() => {
+            if (__DEV__) console.log('Carousel Image: Load started for:', source.uri);
+            setIsLoading(true);
+            setHasError(false);
+          }}
+          onLoad={() => {
+            if (__DEV__) console.log('Carousel Image: Successfully loaded:', source.uri);
+            setIsLoading(false);
+            setHasError(false);
+            onLoad?.();
+          }}
+          onError={(error) => {
+            if (__DEV__) console.error('Carousel Image: Failed to load:', source.uri, error.nativeEvent);
+            setIsLoading(false);
+            setHasError(true);
+            onError?.(error);
+          }}
+        />
+
+        {/* Loading overlay - only show if still loading and no error */}
+        {isLoading && !hasError && (
+          <View style={[style, {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(243, 244, 246, 0.8)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }]}>
+            <ActivityIndicator size="small" color="#6b7280" />
+          </View>
+        )}
+
+        {/* Error state */}
+        {hasError && (
+          <View style={[style, {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }]}>
+            <Ionicons name="image-outline" size={32} color="#ef4444" />
           </View>
         )}
       </View>
     );
   }
 
+  // For non-carousel images, use simplified lazy loading
   return (
-    <View ref={imageRef} style={style}>
+    <View style={style}>
       <Image
-        source={imageSource}
-        style={[
-          style,
-          {
-            opacity: isImageReady ? 1 : 0,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }
-        ]}
+        source={source}
+        style={style}
         resizeMode={resizeMode}
-        onLoadStart={handleLoadStart}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
+        onLoadStart={() => {
+          if (__DEV__) console.log('Non-carousel Image: Load started for:', source.uri);
+          setIsLoading(true);
+          setHasError(false);
+        }}
+        onLoad={() => {
+          if (__DEV__) console.log('Non-carousel Image: Successfully loaded:', source.uri);
+          setIsLoading(false);
+          setHasError(false);
+          onLoad?.();
+        }}
+        onError={(error) => {
+          if (__DEV__) console.error('Non-carousel Image: Failed to load:', source.uri, error.nativeEvent);
+          setIsLoading(false);
+          setHasError(true);
+          onError?.(error);
+        }}
       />
 
       {/* Loading overlay */}
-      {isLoading && !isImageReady && (
+      {isLoading && !hasError && (
         <View style={[style, {
           position: 'absolute',
           top: 0,
@@ -765,6 +943,22 @@ export const LazyImage: React.FC<{
           alignItems: 'center',
         }]}>
           <ActivityIndicator size="small" color="#6b7280" />
+        </View>
+      )}
+
+      {/* Error state */}
+      {hasError && (
+        <View style={[style, {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }]}>
+          <Ionicons name="image-outline" size={32} color="#ef4444" />
         </View>
       )}
     </View>
@@ -796,9 +990,8 @@ export const LazyImageList: React.FC<{
             await persistentImageCache.cacheImage(image.uri);
           }
           setPreloadedImages(prev => new Set(prev).add(image.id));
-          if (__DEV__) console.log(`LazyImageList: Preloaded upcoming image: ${image.uri}`);
         } catch (error) {
-          if (__DEV__) console.warn(`LazyImageList: Failed to preload ${image.uri}:`, error);
+          // Failed to preload - silently continue
         }
       }
     }
@@ -828,36 +1021,3 @@ export const LazyImageList: React.FC<{
   );
 };
 
-// Simple test component to debug image loading
-export const SimpleImageTest = ({ imageUrls }: { imageUrls: string[] | undefined }) => {
-  if (!imageUrls || !Array.isArray(imageUrls) || (imageUrls?.length ?? 0) === 0) {
-    return (
-      <View style={styles.placeholderContainer}>
-        <Text style={styles.noImagesText}>No images to test</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ padding: 20 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-        Simple Image Test ({(imageUrls?.length ?? 0)} images)
-      </Text>
-      {imageUrls.map((url, index) => (
-        <View key={index} style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 14, marginBottom: 5 }}>
-            Image {index + 1}: {url.substring(0, 50)}...
-          </Text>
-          <Image
-            source={{ uri: url }}
-            style={{ width: 200, height: 150, borderRadius: 8 }}
-            resizeMode="cover"
-            onLoadStart={() => console.log(`Test: Started loading ${index + 1}`)}
-            onLoad={() => console.log(`Test: Successfully loaded ${index + 1}`)}
-            onError={(error) => console.error(`Test: Failed to load ${index + 1}:`, error.nativeEvent)}
-          />
-        </View>
-      ))}
-    </View>
-  );
-};

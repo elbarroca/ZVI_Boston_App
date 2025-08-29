@@ -1,5 +1,5 @@
 // components/ListingsMapView.tsx
-import React, { Suspense } from 'react';
+import React from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -20,10 +20,7 @@ if (Platform.OS !== 'web') {
   }
 }
 
-// Lazy load web map component
-const WebMapComponent = Platform.OS === 'web'
-  ? React.lazy(() => import('./WebMapComponent'))
-  : null;
+// Web map component removed - only native maps supported
 
 // Define university locations as per the feedback
 const universityPins = [
@@ -110,39 +107,15 @@ export default function ListingsMapView() {
     );
   }
 
-  // Render appropriate map component based on platform
-  if (Platform.OS === 'web') {
-    if (!WebMapComponent) {
-      return (
-        <View style={styles.center}>
-          <Text style={styles.errorText}>Web map is not supported on this platform.</Text>
-        </View>
-      );
-    }
-
-    return (
-      <Suspense fallback={
-        <View style={styles.center}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Loading map...</Text>
-        </View>
-      }>
-        <WebMapComponent listings={listings || []} router={router} />
-      </Suspense>
-    );
-  } else {
-    return <NativeMapComponent listings={listings || []} router={router} />;
-  }
+  // Render map component - only native platforms supported
+  return <NativeMapComponent listings={listings || []} router={router} />;
 }
 
 const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject, // This makes the map fill its container
   },
-  leafletMap: {
-    height: '100%',
-    width: '100%',
-  },
+
   center: {
     flex: 1,
     justifyContent: 'center',
