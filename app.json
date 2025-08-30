@@ -11,18 +11,27 @@
       "**/*"
     ],
     "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zvi.studenthousing",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby listings on the map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby listings on the map."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyABhlc_Vw3SxPo1lI2SuwoLy_M31gYmgUQ"
+      }
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.zvi.studenthousing",
-      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBBgae_cwRrZqvI9jW2Y1UA2R7L7_SwhLE"
         }
       },
-
       "intentFilters": [
         {
           "action": "VIEW",
@@ -31,7 +40,10 @@
               "scheme": "zvi"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -40,7 +52,10 @@
               "scheme": "exp+zvi"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "VIEW",
@@ -49,8 +64,16 @@
               "scheme": "com.zvi.studenthousing"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
+      ],
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE"
       ],
       "splash": {
         "image": "./assets/splash.png",

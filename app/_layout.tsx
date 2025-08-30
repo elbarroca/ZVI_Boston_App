@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text, Pressable } from 'react-native';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/config/supabase';
+// --- 1. IMPORT THE COMPONENT ---
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const queryClient = new QueryClient();
 
@@ -17,6 +19,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fullScreen: {
+    flex: 1,
+  }
 });
 
 // Function to handle OAuth URL parameters
@@ -160,14 +165,17 @@ const InitialLayout = () => {
 
 export default function RootLayout() {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <SupabaseProvider>
-          <QueryClientProvider client={queryClient}>
-            <InitialLayout />
-          </QueryClientProvider>
-        </SupabaseProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    // --- 2. WRAP YOUR ENTIRE APP ---
+    <GestureHandlerRootView style={styles.fullScreen}>
+      <LanguageProvider>
+        <ThemeProvider>
+          <SupabaseProvider>
+            <QueryClientProvider client={queryClient}>
+              <InitialLayout />
+            </QueryClientProvider>
+          </SupabaseProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </GestureHandlerRootView>
   );
 }

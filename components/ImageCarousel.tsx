@@ -780,9 +780,14 @@ const FullScreenImage: React.FC<{
             setRetryKey(prev => prev + 1);
           }}
         >
-          <Ionicons name="image-outline" size={48} color="#ffffff" />
-          <Text style={styles.fullScreenErrorText}>Image {index + 1} failed to load</Text>
-          <Text style={styles.fullScreenErrorSubtext}>Tap to retry • {uri.substring(0, 50)}...</Text>
+          <Ionicons name="image-outline" size={64} color="#ffffff" />
+          <Text style={styles.fullScreenErrorText}>Image {index + 1} unavailable</Text>
+          <Text style={styles.fullScreenErrorSubtext}>Tap to retry</Text>
+          {uri.includes('placehold.co') && (
+            <Text style={[styles.fullScreenErrorSubtext, { marginTop: 8, fontSize: 12 }]}>
+              Placeholder image not supported on mobile
+            </Text>
+          )}
         </Pressable>
       )}
     </View>

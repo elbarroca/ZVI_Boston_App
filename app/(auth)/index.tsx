@@ -46,9 +46,9 @@ export default function AuthScreen() {
         </Text>
       </View>
 
-      {/* <View style={styles.formContainer}> */}
+      <View style={styles.formContainer}>
         {/* Google Sign-In Button */}
-        {/* <Pressable
+        <Pressable
           style={({ pressed, hovered }) => [
             styles.button,
             styles.googleButton,
@@ -75,12 +75,12 @@ export default function AuthScreen() {
             )}
             <Text style={styles.googleButtonText}>Continue with Google</Text>
           </View>
-        </Pressable> */}
+        </Pressable>
 
-        {/* <Text style={styles.orText}>or</Text> */}
+        <Text style={styles.orText}>or</Text>
 
         {/* Email/Password Inputs */}
-        {/* <TextInput
+        <TextInput
           style={[styles.input, { marginBottom: 16 }]} // Added marginBottom
           placeholder="Email"
           value={email}
@@ -94,9 +94,9 @@ export default function AuthScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-        /> */}
+        />
 
-        {/* <EmailAuthButton
+        <EmailAuthButton
           onPress={handleEmailAuth}
           title={isSignUp ? 'Create Account' : 'Sign In'}
           buttonStyle={{
@@ -118,15 +118,15 @@ export default function AuthScreen() {
             textAlign: 'center',
           }}
           maxWidth={Platform.OS === 'web' ? 420 : screenWidth * 0.85}
-        /> */}
+        />
 
-        {/* <Pressable onPress={() => setIsSignUp(!isSignUp)}>
+        <Pressable onPress={() => setIsSignUp(!isSignUp)}>
           <Text style={styles.footerText}>
             {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
             <Text style={styles.linkText}>{isSignUp ? 'Sign In' : 'Sign Up'}</Text>
           </Text>
-        </Pressable> */}
-      {/* </View> */}
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
