@@ -1,11 +1,12 @@
 // components/ListingsMapView.tsx
-import React from 'react';
-import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ActivityIndicator, Pressable } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { getListings } from '@/lib/api';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/context/language-provider';
 
 // Define university locations as per the feedback
 const universityPins = [
@@ -50,6 +51,8 @@ function getAttractionColor(type: string) {
 
 // Boston Area Map Component with Google Maps - Small Icons
 function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
+  const { t } = useLanguage();
+
   // Boston city center as default region
   const bostonRegion = {
     latitude: 42.3601,
@@ -121,15 +124,15 @@ function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
-          <Text style={styles.legendText}>Universities</Text>
+          <Text style={styles.legendText}>{t('universities')}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-          <Text style={styles.legendText}>Housing</Text>
+          <Text style={styles.legendText}>{t('housing')}</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-          <Text style={styles.legendText}>Attractions</Text>
+          <Text style={styles.legendText}>{t('attractions')}</Text>
         </View>
       </View>
     </View>
@@ -138,6 +141,10 @@ function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
 
 export default function ListingsMapView() {
   const router = useRouter();
+  const { t } = useLanguage();
+  const [showOverlay, setShowOverlay] = useState(true);
+
+  const toggleOverlay = () => setShowOverlay(prev => !prev);
 
   const { data: listings, isLoading, isError } = useQuery({
     queryKey: ['listings-map-data'],
@@ -148,7 +155,7 @@ export default function ListingsMapView() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading Boston area guide...</Text>
+        <Text style={styles.loadingText}>{t('loadingBostonAreaGuide')}</Text>
       </View>
     );
   }
@@ -166,47 +173,88 @@ export default function ListingsMapView() {
   }
 
   return (
-    <>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🗺️ Boston Student Guide</Text>
-        <Text style={styles.headerSubtitle}>
-          Discover universities, housing & attractions
-        </Text>
-      </View>
+    <View style={styles.container}>
+      {showOverlay && (
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>🗺️ {t('bostonStudentGuide')}</Text>
+          <Text style={styles.headerSubtitle}>
+            {t('discoverUniversitiesHousingAttractions')}
+          </Text>
+        </View>
+      )}
+      <Pressable style={styles.toggleButton} onPress={toggleOverlay}>
+        <Ionicons
+          name={showOverlay ? "eye-off-outline" : "eye-outline"}
+          size={24}
+          color="#3B82F6"
+        />
+      </Pressable>
       <BostonAreaMap listings={listings || []} router={router} />
-    </>
+      {showOverlay && (
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+            <Text style={styles.legendText}>{t('universities')}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={styles.legendText}>{t('housing')}</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <Text style={styles.legendText}>{t('attractions')}</Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   // Header styles
   header: {
-    padding: 24,
-    paddingTop: 16,
-    backgroundColor: '#667eea',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    padding: 20,
+    paddingTop: 30,
+    backgroundColor: '#87CEEB', // SkyBlue, a more vibrant and appealing color
+    borderBottomLeftRadius: 30, // Slightly larger radius for a modern look
+    borderBottomRightRadius: 30, // Slightly larger radius
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 }, // More pronounced shadow
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
   },
 
   headerTitle: {
-    fontSize: 22, // Smaller font size
-    fontWeight: '800',
-    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000080', // Navy Blue for strong contrast
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    marginBottom: 4,
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(255, 255, 255, 0.4)', // Softer text shadow
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
   },
 
   headerSubtitle: {
-    fontSize: 14, // Smaller font size
-    color: '#e0e7ff',
+    fontSize: 14,
+    color: '#191970', // Midnight Blue for good readability
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    opacity: 0.9,
   },
 
   // Loading and error states
@@ -249,10 +297,10 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    borderRadius: 0, // Make it full size, no border radius
+    borderRadius: 0,
     overflow: 'hidden',
-    marginHorizontal: 0, // Remove horizontal margin
-    marginBottom: 0,   // Remove bottom margin
+    marginHorizontal: 0,
+    marginBottom: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -264,7 +312,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   universityMarker: {
-    backgroundColor: '#3B82F6', // Blue for universities
+    backgroundColor: '#3B82F6',
     padding: 6,
     borderRadius: 16,
     borderWidth: 1,
@@ -277,7 +325,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   listingMarker: {
-    backgroundColor: '#EF4444', // Red for listings
+    backgroundColor: '#EF4444',
     padding: 6,
     borderRadius: 16,
     borderWidth: 1,
@@ -315,5 +363,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#333',
     fontWeight: '500',
+  },
+  toggleButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 2,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });

@@ -1,7 +1,8 @@
 // components/ListingCard.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, I18nManager } from 'react-native';
-import { Link } from 'expo-router';
+import { View, Text, StyleSheet, Pressable, I18nManager } from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/config/supabase';
@@ -11,7 +12,7 @@ import { useLanguage, TranslationKey } from '@/context/language-provider';
 import { themeColors, spacing, typography, borderRadius, createShadow } from '@/constants/theme';
 import { saveListing, unsaveListing } from '@/lib/api';
 import { imageCache, persistentImageCache, createListingUrl } from '@/lib/utils';
-import { LazyImage } from '@/components/ImageCarousel';
+
 
 export type Listing = {
   id: string;
@@ -44,6 +45,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const { t: translate } = useLanguage();
   const { session } = useSupabaseAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [isSaved, setIsSaved] = useState(listing.is_saved_by_user || false);
   const [isPreloading, setIsPreloading] = useState(false);
 
@@ -126,126 +128,137 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       borderRadius: borderRadius.xl,
       ...createShadow(2)
     }]}>
-      <Link href={`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`} asChild>
-        <Pressable
-          onPressIn={preloadDetailImages} // Start preloading immediately on press
-          onPress={() => {
-            if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
-          }}
-        >
-          <LazyImage
-            source={{ uri: listing.preview_image }}
-            style={styles.image}
-            resizeMode="cover"
-            priority="high" // Main feed images should load immediately
-          />
-          {isPreloading && (
-            <View style={styles.preloadingOverlay}>
-              <Text style={styles.preloadingText}>Preloading images...</Text>
-            </View>
-          )}
-        </Pressable>
-      </Link>
+      <Pressable
+        onPressIn={preloadDetailImages} // Start preloading immediately on press
+        onPress={() => {
+          if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
+          router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
+        }}
+      >
+        <Image
+          source={{ uri: listing.preview_image }}
+          style={styles.image}
+          contentFit="cover"
+        />
+        {isPreloading && (
+          <View style={styles.preloadingOverlay}>
+            <Text style={styles.preloadingText}>Preloading images...</Text>
+          </View>
+        )}
+      </Pressable>
       <View style={[styles.infoContainer, { borderTopColor: colors.border }]}>
         <View style={styles.detailsRow}>
-                        <Link href={`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`} asChild>
-                <Pressable style={{ flex: 1 }}>
-              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{listing.title}</Text>
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => {
+              if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
+              router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
+            }}
+          >
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{listing.title}</Text>
+            <View style={styles.propertyTypeContainer}>
+              <Text style={[styles.propertyType, {
+                backgroundColor: colors.primary + '20',
+                color: colors.primary
+              }]}>
+                {(() => {
+                  if (listing.property_type) {
+                    const translated = t(listing.property_type.toLowerCase() as TranslationKey);
+                    if (translated && translated !== listing.property_type.toLowerCase()) {
+                      return translated;
+                    } else {
+                      return (
+                        listing.property_type.charAt(0).toUpperCase() +
+                        listing.property_type.slice(1).toLowerCase()
+                      );
+                    }
+                  }
+                  return 'Apartment';
+                })()}
+              </Text>
+            </View>
 
-              {/* Property Type Badge */}
-              <View style={styles.propertyTypeContainer}>
-                <Text style={[styles.propertyType, {
-                  backgroundColor: colors.primary + '20',
-                  color: colors.primary
-                }]}>
-                  {listing.property_type ? (
-                    t(listing.property_type.toLowerCase() as TranslationKey) ||
-                    listing.property_type.charAt(0).toUpperCase() + listing.property_type.slice(1).toLowerCase()
-                  ) : 'Apartment'}
+            <View style={styles.mainDetailsContainer}>
+              <View style={styles.detailItem}>
+                <Ionicons name="bed" size={16} color={colors.primary} />
+                <Text style={[styles.detailText, { color: colors.text }]}>
+                  {listing.bedrooms || 0} {listing.bedrooms === 1 ? t('bed') || 'bed' : t('beds') || 'beds'}
                 </Text>
               </View>
-
-              {/* Main Details */}
-              <View style={styles.mainDetailsContainer}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="bed" size={16} color={colors.primary} />
-                  <Text style={[styles.detailText, { color: colors.text }]}>
-                    {listing.bedrooms} {listing.bedrooms === 1 ? t('bed') : t('beds')}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="water" size={16} color={colors.primary} />
-                  <Text style={[styles.detailText, { color: colors.text }]}>
-                    {listing.bathrooms} {listing.bathrooms === 1 ? t('bath') : t('baths')}
-                  </Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="resize" size={16} color={colors.primary} />
-                  <Text style={[styles.detailText, { color: colors.text }]}>{listing.square_feet} {translate('sqft')}</Text>
-                </View>
-              </View>
-
-              {/* Location */}
-              <View style={styles.locationContainer}>
-                <Ionicons name="location" size={16} color={colors.textSecondary} />
-                <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {listing.neighborhood}, {listing.location_address}
+              <View style={styles.detailItem}>
+                <Ionicons name="water" size={16} color={colors.primary} />
+                <Text style={[styles.detailText, { color: colors.text }]}>
+                  {listing.bathrooms || 0} {listing.bathrooms === 1 ? t('bath') || 'bath' : t('baths') || 'baths'}
                 </Text>
               </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="resize" size={16} color={colors.primary} />
+                <Text style={[styles.detailText, { color: colors.text }]}>{listing.square_feet || 0} {translate('sqft') || 'sqft'}</Text>
+              </View>
+            </View>
 
-              {/* University Distance */}
-              {listing.university_proximity_minutes && (
-                <View style={styles.universityContainer}>
-                  <Ionicons name="school" size={16} color={colors.primary} />
-                  <Text style={[styles.universityText, { color: colors.textSecondary }]}>
-                    {listing.university_proximity_minutes} {translate('minTo')} {listing.nearest_university}
+            {/* Location */}
+            <View style={styles.locationContainer}>
+              <Ionicons name="location" size={16} color={colors.textSecondary} />
+              <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
+                {listing.neighborhood || 'Area'}, {listing.location_address || 'Address'}
+              </Text>
+            </View>
+
+            {/* University Distance */}
+            {listing.university_proximity_minutes && (
+              <View style={styles.universityContainer}>
+                <Ionicons name="school" size={16} color={colors.primary} />
+                <Text style={[styles.universityText, { color: colors.textSecondary }]}>
+                  {listing.university_proximity_minutes || 0} {translate('minTo') || 'min to'} {listing.nearest_university || 'University'}
+                </Text>
+              </View>
+            )}
+
+            {/* Amenities */}
+            <View style={styles.amenitiesContainer}>
+              {listing.is_furnished && (
+                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="home" size={14} color={colors.primary} />
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('furnished') || 'Furnished'}</Text>
+                </View>
+              )}
+              {listing.utilities_included && (
+                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="flash" size={14} color={colors.primary} />
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('utilitiesIncluded') || 'Utilities'}</Text>
+                </View>
+              )}
+              {listing.pets_allowed && (
+                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="paw" size={14} color={colors.primary} />
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('pets') || 'Pets'}</Text>
+                </View>
+              )}
+              {listing.laundry_type && listing.laundry_type !== 'none' && (
+                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="shirt" size={14} color={colors.primary} />
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>
+                    {listing.laundry_type === 'in-unit' ? translate('inUnitLaundry') || 'In-Unit Laundry' : translate('laundry') || 'Laundry'}
                   </Text>
                 </View>
               )}
+              {listing.parking_type && listing.parking_type !== 'none' && (
+                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="car" size={14} color={colors.primary} />
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('parking') || 'Parking'}</Text>
+                </View>
+              )}
+            </View>
 
-              {/* Amenities */}
-              <View style={styles.amenitiesContainer}>
-                {listing.is_furnished && (
-                  <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="home" size={14} color={colors.primary} />
-                    <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('furnished')}</Text>
-                  </View>
-                )}
-                {listing.utilities_included && (
-                  <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="flash" size={14} color={colors.primary} />
-                    <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('utilitiesIncluded')}</Text>
-                  </View>
-                )}
-                {listing.pets_allowed && (
-                  <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="paw" size={14} color={colors.primary} />
-                    <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('pets')}</Text>
-                  </View>
-                )}
-                {listing.laundry_type && listing.laundry_type !== 'none' && (
-                  <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="shirt" size={14} color={colors.primary} />
-                    <Text style={[styles.amenityText, { color: colors.primary }]}>
-                      {listing.laundry_type === 'in-unit' ? translate('inUnitLaundry') : translate('laundry')}
-                    </Text>
-                  </View>
-                )}
-                {listing.parking_type && listing.parking_type !== 'none' && (
-                  <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
-                    <Ionicons name="car" size={14} color={colors.primary} />
-                    <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('parking')}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Price */}
+            {/* Price */}
+            <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>
-                {`$${listing.price_per_month.toLocaleString()} `}
-                <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>{translate('perMonth')}</Text>
+                ${listing.price_per_month.toLocaleString()}
               </Text>
-            </Pressable>
-          </Link>
+              <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}> {translate('perMonth')}</Text>
+            </View>
+          </Pressable>
           <Pressable onPress={toggleSave} style={[styles.heartButton, {
             backgroundColor: colors.surface,
             borderRadius: borderRadius.lg,
@@ -352,6 +365,11 @@ const styles = StyleSheet.create({
   amenityText: {
     fontSize: typography.fontSize.xs,
     fontWeight: typography.fontWeight.medium,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
   },
   price: {
     fontSize: typography.fontSize.xl,

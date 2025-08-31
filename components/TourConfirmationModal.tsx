@@ -5,7 +5,7 @@ import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage } from '@/context/language-provider';
 import { Calendar } from 'react-native-calendars';
-import TourRequestSummaryModal from './TourRequestSummaryModal';
+import TourRequestSummaryModal from './TourRequestModal';
 import { TourService } from '@/lib/tourService';
 import { useSupabaseAuth } from '@/context/supabase-provider';
 
@@ -13,9 +13,10 @@ interface TourConfirmationModalProps {
   isVisible: boolean;
   onClose: () => void;
   listingId: string;
+  showComingSoon?: boolean; // New prop to control content
 }
 
-export default function TourConfirmationModal({ isVisible, onClose, listingId }: TourConfirmationModalProps) {
+export default function TourConfirmationModal({ isVisible, onClose, listingId, showComingSoon }: TourConfirmationModalProps) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { session } = useSupabaseAuth();
@@ -86,7 +87,7 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId }:
         setSelectedTimeSlots(prev => [...prev, timeSlot]);
         setPrioritySlots(prev => [...prev, { time: timeSlot, priority: prev.length + 1 }]);
       } else {
-        alert("You can select a maximum of 3 time slots.");
+        alert(t('maxTimeSlotsAlert'));
       }
     }
   };
@@ -126,7 +127,7 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId }:
       const hasExistingRequest = await TourService.hasUserRequestedTourForListing(session.user.id, listingId);
 
       if (hasExistingRequest) {
-        alert(t('tourRequestAlreadyExists') || 'You have already requested a tour for this listing. You can only request one tour per listing.');
+        alert(t('tourRequestAlreadyExists'));
         return;
       }
 
@@ -160,176 +161,196 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId }:
       <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
         <View style={styles.modalHeader}>
           <View style={styles.modalTitleContainer}>
-            <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectTourDateTime')}</Text>
+            {showComingSoon ? (
+              <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+            ) : (
+              <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+            )}
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {showComingSoon ? "Feature Coming Soon" : t('selectTourDateTime')}
+            </Text>
           </View>
           <Pressable onPress={onClose}>
             <Ionicons name="close" size={24} color={colors.textSecondary} />
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>🗓️ {t('availableDates')}</Text>
-            <Calendar
-              minDate={new Date().toISOString().split('T')[0]}
-              maxDate={new Date(new Date().setDate(new Date().getDate() + 14)).toISOString().split('T')[0]}
-              onDayPress={handleDayPress}
-              markedDates={selectedDates}
-              theme={{
-                backgroundColor: colors.surface,
-                calendarBackground: colors.surface,
-                textSectionTitleColor: colors.text,
-                selectedDayBackgroundColor: colors.primary,
-                selectedDayTextColor: '#ffffff',
-                todayTextColor: colors.primary,
-                dayTextColor: colors.text,
-                textDisabledColor: colors.textMuted,
-                arrowColor: colors.primary,
-                monthTextColor: colors.text,
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: 'bold',
-                'stylesheet.calendar.header': {
-                  week: {
-                    marginTop: 5,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: 0
-                  }
-                }
-              }}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>⏰ {t('availableTimeSlots')}</Text>
-            <View style={styles.timeSlotsContainer}>
-              {timeSlots.map((slot, index) => {
-                const isSelected = selectedTimeSlots.includes(slot);
-                const priority = getTimeSlotPriority(slot);
-                return (
-                  <Pressable
-                    key={index}
-                    style={[
-                      styles.timeSlotButton,
-                      { borderColor: colors.border },
-                      isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
-                    ]}
-                    onPress={() => handleTimeSlotPress(slot)}
-                  >
-                    <Text style={[
-                      styles.timeSlotText,
-                      { color: isSelected ? 'white' : colors.text }
-                    ]}>
-                      {slot}
-                    </Text>
-                    {priority && (
-                      <View style={[styles.priorityBadge, { backgroundColor: isSelected ? 'white' : colors.primary }]}>
-                        <Text style={[styles.priorityText, { color: isSelected ? colors.primary : 'white' }]}>{priority}</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Selected Tour Details */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>✨ {t('selectedTourDetails')}</Text>
-            {Object.keys(selectedDates).length === 0 && selectedTimeSlots.length === 0 ? (
-              <Text style={{ color: colors.textSecondary }}>{t('noDatesSelected')}</Text>
-            ) : (
-              <View style={styles.selectedDetailsCard}>
-                {Object.keys(selectedDates).length > 0 && (
-                  <View style={styles.selectedDetailsBlock}>
-                    <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>🗓️ Dates:</Text>
-                    {Object.keys(selectedDates).map(date => (
-                      <Text key={date} style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{date}</Text>
-                    ))}
-                  </View>
-                )}
-                {selectedTimeSlots.length > 0 && (
-                  <View style={styles.selectedDetailsBlock}>
-                    <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>⏰ Time Slots:</Text>
-                    {prioritySlots.sort((a,b) => a.priority - b.priority).map((slot, index) => (
-                      <Text key={index} style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>
-                        {slot.priority}. {slot.time}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-                {showNotesInput && notes.length > 0 && (
-                  <View style={styles.selectedDetailsBlock}>
-                    <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>📝 Your Notes:</Text>
-                    <Text style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{notes}</Text>
-                  </View>
-                )}
-                {showPhoneInput && phoneNumber.length > 0 && (
-                  <View style={styles.selectedDetailsBlock}>
-                    <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>📞 Contact Number:</Text>
-                    <Text style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{selectedCountryCode} {phoneNumber}</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Notes Toggle and Input */}
-          <View style={styles.section}>
-            <Pressable style={styles.toggleRow} onPress={() => setShowNotesInput(!showNotesInput)}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>📝 {t('addNotes')}</Text>
-              <Ionicons name={showNotesInput ? 'chevron-up' : 'chevron-down'} size={24} color={colors.textSecondary} />
+        {showComingSoon ? (
+          <View style={styles.comingSoonContainer}>
+            <Ionicons name="code-working" size={60} color={colors.primary} style={styles.comingSoonIcon} />
+            <Text style={[styles.comingSoonText, { color: colors.text }]}>
+              We are actively working on implementing this feature. Please check back soon!
+            </Text>
+            <Pressable
+              style={[styles.comingSoonButton, { backgroundColor: colors.primary }]}
+              onPress={onClose}
+            >
+              <Text style={styles.comingSoonButtonText}>Got It</Text>
             </Pressable>
-            {showNotesInput && (
-              <TextInput
-                style={[styles.textInput, { borderColor: colors.border, color: colors.text }]} 
-                placeholder="E.g., Special requests or questions..."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={4}
-                value={notes}
-                onChangeText={setNotes}
+          </View>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>🗓️ {t('availableDates')}</Text>
+              <Calendar
+                minDate={(() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  return tomorrow.toISOString().split('T')[0];
+                })()}
+                maxDate={(() => {
+                  const maxDate = new Date();
+                  maxDate.setDate(maxDate.getDate() + 15);
+                  return maxDate.toISOString().split('T')[0];
+                })()}
+                onDayPress={handleDayPress}
+                markedDates={selectedDates}
+                theme={{
+                  backgroundColor: colors.surface,
+                  calendarBackground: colors.surface,
+                  textSectionTitleColor: colors.text,
+                  selectedDayBackgroundColor: colors.primary,
+                  selectedDayTextColor: '#ffffff',
+                  todayTextColor: colors.primary,
+                  dayTextColor: colors.text,
+                  textDisabledColor: colors.textMuted,
+                  arrowColor: colors.primary,
+                  monthTextColor: colors.text,
+                  textMonthFontWeight: 'bold',
+                  textDayHeaderFontWeight: 'bold'
+                }}
               />
-            )}
-          </View>
+            </View>
 
-          {/* Contact by Phone Toggle and Input */}
-          <View style={styles.section}>
-            <Pressable style={styles.toggleRow} onPress={() => setShowPhoneInput(!showPhoneInput)}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>📞 {t('contactByPhone')}</Text>
-              <Ionicons name={showPhoneInput ? 'chevron-up' : 'chevron-down'} size={24} color={colors.textSecondary} />
-            </Pressable>
-            {showPhoneInput && (
-              <View style={styles.phoneInputContainer}>
-                <Pressable style={[styles.countryCodePicker, { borderColor: colors.border, backgroundColor: colors.background }]} onPress={() => setIsCountryPickerVisible(true)}>
-                  <Text style={[styles.countryCodeText, { color: colors.text }]}>{countryCodes.find(c => c.code === selectedCountryCode)?.flag || '❓'}</Text>
-                  <Text style={[styles.countryCodeText, { color: colors.text }]}>{selectedCountryCode}</Text>
-                  <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-                </Pressable>
-                <TextInput
-                  style={[styles.textInput, styles.phoneNumberInput, { borderColor: colors.border, color: colors.text }]} 
-                  placeholder="Phone Number"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="phone-pad"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                />
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>⏰ {t('availableTimeSlots')}</Text>
+              <View style={styles.timeSlotsContainer}>
+                {timeSlots.map((slot, index) => {
+                  const isSelected = selectedTimeSlots.includes(slot);
+                  const priority = getTimeSlotPriority(slot);
+                  return (
+                    <Pressable
+                      key={index}
+                      style={[
+                        styles.timeSlotButton,
+                        { borderColor: colors.border },
+                        isSelected && { backgroundColor: colors.primary, borderColor: colors.primary }
+                      ]}
+                      onPress={() => handleTimeSlotPress(slot)}
+                    >
+                      <Text style={[
+                        styles.timeSlotText,
+                        { color: isSelected ? 'white' : colors.text }
+                      ]}>
+                        {slot}
+                      </Text>
+                      {priority && (
+                        <View style={[styles.priorityBadge, { backgroundColor: isSelected ? 'white' : colors.primary }]}>
+                          <Text style={[styles.priorityText, { color: isSelected ? colors.primary : 'white' }]}>{priority}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
-            )}
-          </View>
+            </View>
 
-        </ScrollView>
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>✨ {t('selectedTourDetails')}</Text>
+              {Object.keys(selectedDates).length === 0 && selectedTimeSlots.length === 0 ? (
+                <Text style={{ color: colors.textSecondary }}>{t('noDatesSelected')}</Text>
+              ) : (
+                <View style={styles.selectedDetailsCard}>
+                  {Object.keys(selectedDates).length > 0 && (
+                    <View style={styles.selectedDetailsBlock}>
+                      <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>🗓️ Dates:</Text>
+                      {Object.keys(selectedDates).map(date => (
+                        <Text key={date} style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{date}</Text>
+                      ))}
+                    </View>
+                  )}
+                  {selectedTimeSlots.length > 0 && (
+                    <View style={styles.selectedDetailsBlock}>
+                      <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>⏰ Time Slots:</Text>
+                      {prioritySlots.sort((a,b) => a.priority - b.priority).map((slot, index) => (
+                        <Text key={index} style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>
+                          {slot.priority}. {slot.time}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                  {showNotesInput && notes.length > 0 && (
+                    <View style={styles.selectedDetailsBlock}>
+                      <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>📝 Your Notes:</Text>
+                      <Text style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{notes}</Text>
+                    </View>
+                  )}
+                  {showPhoneInput && phoneNumber.length > 0 && (
+                    <View style={styles.selectedDetailsBlock}>
+                      <Text style={[styles.selectedDetailsLabel, { color: colors.text }]}>📞 Contact Number:</Text>
+                      <Text style={[styles.selectedDetailsText, { color: colors.textSecondary }]}>{selectedCountryCode} {phoneNumber}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
 
-        <Pressable
-          style={[styles.submitButton, { backgroundColor: isSubmitting ? colors.textMuted : colors.primary }]}
-          onPress={handleSubmitTourRequest}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? t('submitting') : t('submitRequest')}
-          </Text>
-        </Pressable>
+            <View style={styles.section}>
+              <Pressable style={styles.toggleRow} onPress={() => setShowNotesInput(!showNotesInput)}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>📝 {t('addNotes')}</Text>
+                <Ionicons name={showNotesInput ? 'chevron-up' : 'chevron-down'} size={24} color={colors.textSecondary} />
+              </Pressable>
+              {showNotesInput && (
+                <TextInput
+                  style={[styles.textInput, { borderColor: colors.border, color: colors.text }]} 
+                  placeholder={t('notesPlaceholder')}
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  value={notes}
+                  onChangeText={setNotes}
+                />
+              )}
+            </View>
+
+            <View style={styles.section}>
+              <Pressable style={styles.toggleRow} onPress={() => setShowPhoneInput(!showPhoneInput)}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>📞 {t('contactByPhone')}</Text>
+                <Ionicons name={showPhoneInput ? 'chevron-up' : 'chevron-down'} size={24} color={colors.textSecondary} />
+              </Pressable>
+              {showPhoneInput && (
+                <View style={styles.phoneInputContainer}>
+                  <Pressable style={[styles.countryCodePicker, { borderColor: colors.border, backgroundColor: colors.background }]} onPress={() => setIsCountryPickerVisible(true)}>
+                    <Text style={[styles.countryCodeText, { color: colors.text }]}>{countryCodes.find(c => c.code === selectedCountryCode)?.flag || '❓'}</Text>
+                    <Text style={[styles.countryCodeText, { color: colors.text }]}>{selectedCountryCode}</Text>
+                    <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+                  </Pressable>
+                  <TextInput
+                    style={[styles.textInput, styles.phoneNumberInput, { borderColor: colors.border, color: colors.text }]} 
+                    placeholder={t('phoneNumberPlaceholder')}
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="phone-pad"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                  />
+                </View>
+              )}
+            </View>
+
+          </ScrollView>
+        )}
+
+        {!showComingSoon && (
+          <Pressable
+            style={[styles.submitButton, { backgroundColor: isSubmitting ? colors.textMuted : colors.primary }]}
+            onPress={handleSubmitTourRequest}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? t('submitting') : t('submitRequest')}
+            </Text>
+          </Pressable>
+        )}
 
         {/* Country Code Picker Modal */}
         <Modal
@@ -402,7 +423,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '90%', // Increased height
+    maxHeight: '90%',
+    minHeight: '50%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -550,5 +572,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+  },
+  // New styles for the coming soon message
+  comingSoonContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  comingSoonIcon: {
+    marginBottom: 20,
+  },
+  comingSoonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  comingSoonButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    minWidth: 150,
+  },
+  comingSoonButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

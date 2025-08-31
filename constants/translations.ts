@@ -8,6 +8,7 @@ export const translations = {
     'search': 'Search',
     'settings': 'Settings',
     'saved': 'Saved',
+    'map': 'Map',
     'helpSupport': 'Help & Support',
     'editProfile': 'Edit Profile',
     'signOut': 'Sign Out',
@@ -153,6 +154,17 @@ export const translations = {
     'contactByPhone': 'Contact by Phone',
     'selectCountryCode': 'Select Country Code',
     'gotIt': 'Got It',
+    'maxTimeSlotsAlert': 'You can select a maximum of 3 time slots.',
+    'notesPlaceholder': 'E.g., Special requests or questions...',
+    'phoneNumberPlaceholder': 'Phone Number',
+
+    // Map related
+    'universities': 'Universities',
+    'housing': 'Housing',
+    'attractions': 'Attractions',
+    'bostonStudentGuide': 'Boston Student Guide',
+    'discoverUniversitiesHousingAttractions': 'Discover universities, housing & attractions',
+    'loadingBostonAreaGuide': 'Loading Boston area guide...',
   },
 
   es: {
@@ -164,6 +176,7 @@ export const translations = {
     'search': 'Buscar',
     'settings': 'Configuración',
     'saved': 'Guardado',
+    'map': 'Mapa',
     'helpSupport': 'Ayuda y Soporte',
     'editProfile': 'Editar Perfil',
     'signOut': 'Cerrar Sesión',
@@ -246,6 +259,7 @@ export const translations = {
     'maxMonths': 'Meses Máximos',
     'applyFilters': 'Aplicar Filtros',
     'resetAll': 'Restablecer Todo',
+    'clearAll': 'Limpiar Todo',
 
     // Error messages
     'selectDateTime': 'Por favor selecciona al menos una fecha y un horario.',
@@ -308,6 +322,17 @@ export const translations = {
     'contactByPhone': 'Contactar por Teléfono',
     'selectCountryCode': 'Seleccionar Código de País',
     'gotIt': 'Entendido',
+    'maxTimeSlotsAlert': 'Puedes seleccionar un máximo de 3 franjas horarias.',
+    'notesPlaceholder': 'Ej., Solicitudes especiales o preguntas...',
+    'phoneNumberPlaceholder': 'Número de Teléfono',
+
+    // Map related
+    'universities': 'Universidades',
+    'housing': 'Vivienda',
+    'attractions': 'Atracciones',
+    'bostonStudentGuide': 'Guía del Estudiante de Boston',
+    'discoverUniversitiesHousingAttractions': 'Descubre universidades, vivienda y atracciones',
+    'loadingBostonAreaGuide': 'Cargando guía del área de Boston...',
   },
 
   zh: {
@@ -319,6 +344,7 @@ export const translations = {
     'search': '搜索',
     'settings': '设置',
     'saved': '已保存',
+    'map': '地图',
     'helpSupport': '帮助与支持',
     'editProfile': '编辑个人资料',
     'signOut': '退出登录',
@@ -401,6 +427,7 @@ export const translations = {
     'maxMonths': '最多月数',
     'applyFilters': '应用筛选',
     'resetAll': '重置全部',
+    'clearAll': '全部清除',
 
     // Error messages
     'selectDateTime': '请至少选择一个日期和一个时间段。',
@@ -462,7 +489,18 @@ export const translations = {
     'addNotes': '添加备注',
     'contactByPhone': '通过电话联系',
     'selectCountryCode': '选择国家代码',
+    'maxTimeSlotsAlert': '您最多可以选择3个时间段。',
+    'notesPlaceholder': '例如：特殊要求或问题...',
+    'phoneNumberPlaceholder': '电话号码',
     'gotIt': '知道了',
+
+    // Map related
+    'universities': '大学',
+    'housing': '住房',
+    'attractions': '景点',
+    'bostonStudentGuide': '波士顿学生指南',
+    'discoverUniversitiesHousingAttractions': '探索大学、住房和景点',
+    'loadingBostonAreaGuide': '正在加载波士顿地区指南...',
   },
 
   fr: {
@@ -474,6 +512,7 @@ export const translations = {
     'search': 'Rechercher',
     'settings': 'Paramètres',
     'saved': 'Enregistré',
+    'map': 'Carte',
     'helpSupport': 'Aide et Support',
     'editProfile': 'Modifier le Profil',
     'signOut': 'Se Déconnecter',
@@ -556,6 +595,7 @@ export const translations = {
     'maxMonths': 'Mois Maximum',
     'applyFilters': 'Appliquer les Filtres',
     'resetAll': 'Tout Réinitialiser',
+    'clearAll': 'Tout Effacer',
 
     // Error messages
     'selectDateTime': 'Veuillez sélectionner au moins une date et un créneau horaire.',
@@ -617,7 +657,18 @@ export const translations = {
     'addNotes': 'Ajouter des Notes',
     'contactByPhone': 'Contacter par Téléphone',
     'selectCountryCode': 'Sélectionner le Code Pays',
+    'maxTimeSlotsAlert': 'Vous pouvez sélectionner un maximum de 3 créneaux horaires.',
+    'notesPlaceholder': 'Ex., Demandes spéciales ou questions...',
+    'phoneNumberPlaceholder': 'Numéro de Téléphone',
     'gotIt': 'Compris',
+
+    // Map related
+    'universities': 'Universités',
+    'housing': 'Logement',
+    'attractions': 'Attractions',
+    'bostonStudentGuide': 'Guide Étudiant de Boston',
+    'discoverUniversitiesHousingAttractions': 'Découvrez les universités, logements et attractions',
+    'loadingBostonAreaGuide': 'Chargement du guide de la région de Boston...',
   },
 
   pt: {
@@ -629,6 +680,7 @@ export const translations = {
     'search': 'Buscar',
     'settings': 'Configurações',
     'saved': 'Salvo',
+    'map': 'Mapa',
     'helpSupport': 'Ajuda e Suporte',
     'editProfile': 'Editar Perfil',
     'signOut': 'Sair',
@@ -711,6 +763,7 @@ export const translations = {
     'maxMonths': 'Meses Máximos',
     'applyFilters': 'Aplicar Filtros',
     'resetAll': 'Redefinir Tudo',
+    'clearAll': 'Limpar Tudo',
 
     // Error messages
     'selectDateTime': 'Por favor selecione pelo menos uma data e horário.',
@@ -774,7 +827,18 @@ export const translations = {
     'addNotes': 'Adicionar Notas',
     'contactByPhone': 'Contactar por Telefone',
     'selectCountryCode': 'Selecionar Código do País',
+    'maxTimeSlotsAlert': 'Você pode selecionar no máximo 3 horários.',
+    'notesPlaceholder': 'Ex., Pedidos especiais ou perguntas...',
+    'phoneNumberPlaceholder': 'Número de Telefone',
     'gotIt': 'Entendido',
+
+    // Map related
+    'universities': 'Universidades',
+    'housing': 'Moradia',
+    'attractions': 'Atrações',
+    'bostonStudentGuide': 'Guia do Estudante de Boston',
+    'discoverUniversitiesHousingAttractions': 'Descubra universidades, moradia e atrações',
+    'loadingBostonAreaGuide': 'Carregando guia da área de Boston...',
   },
 
   hi: {
@@ -786,6 +850,7 @@ export const translations = {
     'search': 'खोज',
     'settings': 'सेटिंग्स',
     'saved': 'सहेजा गया',
+    'map': 'मैप',
     'helpSupport': 'मदद और समर्थन',
     'editProfile': 'प्रोफाइल संपादित करें',
     'signOut': 'साइन आउट',
@@ -819,6 +884,7 @@ export const translations = {
     'submitRequest': 'अनुरोध जमा करें',
     'submitting': 'जमा हो रहा है...',
     'tourRequestSubmitted': 'टूर अनुरोध जमा किया गया!',
+    'tourRequestAlreadyExists': 'आपने इस लिस्टिंग के लिए पहले ही टूर का अनुरोध किया है। आप प्रति लिस्टिंग केवल एक टूर का अनुरोध कर सकते हैं।',
     'requestReceived': 'धन्यवाद! हमें आपका टूर अनुरोध प्राप्त हुआ है और हम 24 घंटों के भीतर संपर्क करेंगे।',
     'yourSelectedSchedule': 'आपका चुना हुआ समय',
     'contactInformation': 'संपर्क जानकारी',
@@ -867,6 +933,7 @@ export const translations = {
     'maxMonths': 'अधिकतम महीने',
     'applyFilters': 'फिल्टर लागू करें',
     'resetAll': 'सब रीसेट करें',
+    'clearAll': 'सब साफ़ करें',
 
     // Error messages
     'selectDateTime': 'कृपया कम से कम एक तिथि और समय चुनें।',
@@ -930,7 +997,18 @@ export const translations = {
     'addNotes': 'नोट्स जोड़ें',
     'contactByPhone': 'फोन द्वारा संपर्क करें',
     'selectCountryCode': 'देश कोड चुनें',
+    'maxTimeSlotsAlert': 'आप अधिकतम 3 समय स्लॉट चुन सकते हैं।',
+    'notesPlaceholder': 'उदा., विशेष अनुरोध या प्रश्न...',
+    'phoneNumberPlaceholder': 'फोन नंबर',
     'gotIt': 'समझ गया',
+
+    // Map related
+    'universities': 'विश्वविद्यालय',
+    'housing': 'आवास',
+    'attractions': 'आकर्षण',
+    'bostonStudentGuide': 'बॉस्टन स्टूडेंट गाइड',
+    'discoverUniversitiesHousingAttractions': 'विश्वविद्यालय, आवास और आकर्षण खोजें',
+    'loadingBostonAreaGuide': 'बॉस्टन क्षेत्र गाइड लोड हो रहा है...',
   },
 
   he: {
@@ -942,6 +1020,7 @@ export const translations = {
     'search': 'חיפוש',
     'settings': 'הגדרות',
     'saved': 'שמור',
+    'map': 'מפה',
     'helpSupport': 'עזרה ותמיכה',
     'editProfile': 'עריכת פרופיל',
     'signOut': 'התנתקות',
@@ -963,6 +1042,9 @@ export const translations = {
     'phoneAndEmail': 'טלפון ומייל',
     'phoneOnly': 'טלפון בלבד',
     'emailOnly': 'מייל בלבד',
+    'email': 'מייל',
+    'phone': 'טלפון',
+    'selectedDates': 'תאריכים נבחרים',
     'addressNotAvailable': 'כתובת לא זמינה',
     'property': 'נכס',
     'location': 'מיקום',
@@ -978,6 +1060,7 @@ export const translations = {
     'submitRequest': 'שלח בקשה',
     'submitting': 'שולח...',
     'tourRequestSubmitted': 'בקשת הסיור נשלחה!',
+    'tourRequestAlreadyExists': 'כבר ביקשת סיור לנכס זה. ניתן לבקש סיור אחד לכל נכס.',
     'requestReceived': 'תודה! קיבלנו את בקשת הסיור שלך ונחזור אליך תוך 24 שעות.',
     'yourSelectedSchedule': 'לוח הזמנים שבחרת',
     'contactInformation': 'פרטי יצירת קשר',
@@ -1026,6 +1109,7 @@ export const translations = {
     'maxMonths': 'מקסימום חודשים',
     'applyFilters': 'החל מסננים',
     'resetAll': 'איפוס הכל',
+    'clearAll': 'נקה הכל',
 
     // Error messages
     'selectDateTime': 'אנא בחר לפחות תאריך אחד ושעת זמן אחת.',
@@ -1086,5 +1170,16 @@ export const translations = {
     'addNotes': 'הוסף הערות',
     'contactByPhone': 'צור קשר בטלפון',
     'selectCountryCode': 'בחר קוד מדינה',
+    'maxTimeSlotsAlert': 'ניתן לבחור מקסימום 3 זמני זמינים.',
+    'notesPlaceholder': 'לדוגמה: בקשות מיוחדות או שאלות...',
+    'phoneNumberPlaceholder': 'מספר טלפון',
+
+    // Map related
+    'universities': 'אוניברסיטאות',
+    'housing': 'דיור',
+    'attractions': 'אטרקציות',
+    'bostonStudentGuide': 'מדריך הסטודנט של בוסטון',
+    'discoverUniversitiesHousingAttractions': 'גלה אוניברסיטאות, דיור ואטרקציות',
+    'loadingBostonAreaGuide': 'טוען את מדריך אזור בוסטון...',
   },
 };

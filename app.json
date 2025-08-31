@@ -98,7 +98,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "This app uses location to show nearby listings on the map."
         }
-      ]
+      ],
+      "expo-av"
     ],
     "extra": {
       "router": {

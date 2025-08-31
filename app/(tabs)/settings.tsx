@@ -70,10 +70,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleEditProfile = () => {
-    Alert.alert("Edit Profile", "Profile editing functionality would be implemented here.");
-  };
-
   const handleHelp = () => {
     Alert.alert("Help & Support", "Contact us at support@yourapp.com for assistance.");
   };
@@ -105,12 +101,7 @@ export default function SettingsScreen() {
             <Image source={{ uri: profile.avatar_url || 'https://placehold.co/100' }} style={styles.avatar} />
             <Text style={[styles.name, { color: colors.text }]}>{profile.full_name}</Text>
             <Text style={[styles.email, { color: colors.textSecondary }]}>{profile.email}</Text>
-            <TouchableOpacity
-              style={[styles.editButton, { backgroundColor: colors.primary }]}
-              onPress={handleEditProfile}
-            >
-              <Text style={styles.editButtonText}>{t('editProfile')}</Text>
-            </TouchableOpacity>
+
           </>
         )}
         {!profile && (
@@ -172,12 +163,7 @@ export default function SettingsScreen() {
           backgroundColor: colors.surface,
           shadowColor: colors.shadow
         }]}>
-          <SettingItem
-            icon="person-outline"
-            title={t('editProfile')}
-            onPress={handleEditProfile}
-            rightComponent={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
-          />
+
           <SettingItem
             icon="help-circle-outline"
             title={t('helpSupport')}
@@ -220,7 +206,7 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                   <Text style={[styles.tourDate, { color: colors.textSecondary }]}>
-                    {new Date(tour.created_at).toLocaleDateString(currentLanguage.code === 'en' ? 'en-US' : currentLanguage.code, {
+                    {new Date(tour.created_at).toLocaleDateString(currentLanguage.code, {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric'
@@ -299,7 +285,7 @@ export default function SettingsScreen() {
                     Request ID: {String(tour.id).substring(0, 8)}...
                   </Text>
                   <Text style={[styles.requestTime, { color: colors.textMuted }]}>
-                    Submitted: {new Date(tour.created_at).toLocaleString(currentLanguage.code === 'en' ? 'en-US' : currentLanguage.code)}
+                    Submitted: {new Date(tour.created_at).toLocaleString(currentLanguage.code)}
                   </Text>
                 </View>
               </View>

@@ -129,16 +129,16 @@ export default function FeedScreen() {
       activeFilters.push(`$${appliedFilters.minPrice || '0'}-$${appliedFilters.maxPrice || '∞'}`);
     }
     if (appliedFilters.beds) {
-      activeFilters.push(`${appliedFilters.beds} Bed${appliedFilters.beds === '4+' ? 's' : ''}`);
+      activeFilters.push(`${appliedFilters.beds} ${appliedFilters.beds === '4+' ? t('beds') : t('bed')}`);
     }
     if (appliedFilters.laundry) {
-      activeFilters.push(`Laundry: ${appliedFilters.laundry === 'in-unit' ? 'In Unit' : appliedFilters.laundry === 'on-site' ? 'On Site' : 'None'}`);
+      activeFilters.push(`${t('laundry')}: ${appliedFilters.laundry === 'in-unit' ? t('inUnit') : appliedFilters.laundry === 'on-site' ? t('onSite') : t('none')}`);
     }
-    if (appliedFilters.parking) activeFilters.push('Parking');
-    if (appliedFilters.pets_allowed) activeFilters.push('Pets');
-    if (appliedFilters.is_furnished) activeFilters.push('Furnished');
-    if (appliedFilters.utilities_included) activeFilters.push('Utilities');
-    if (appliedFilters.broker_fee_required === false) activeFilters.push('No Broker Fee');
+    if (appliedFilters.parking) activeFilters.push(t('parking'));
+    if (appliedFilters.pets_allowed) activeFilters.push(t('petsAllowed'));
+    if (appliedFilters.is_furnished) activeFilters.push(t('furnished'));
+    if (appliedFilters.utilities_included) activeFilters.push(t('utilitiesIncluded'));
+    if (appliedFilters.broker_fee_required === false) activeFilters.push(t('noBrokerFee'));
     return activeFilters;
   };
 
@@ -151,25 +151,25 @@ export default function FeedScreen() {
       newAppliedFilters.maxPrice = '';
       newDraftFilters.minPrice = '';
       newDraftFilters.maxPrice = '';
-    } else if (filterText.includes('Bed')) {
+    } else if (filterText.includes(t('bed')) || filterText.includes(t('beds'))) {
       newAppliedFilters.beds = '';
       newDraftFilters.beds = '';
-    } else if (filterText.includes('Laundry')) {
+    } else if (filterText.includes(t('laundry'))) {
       newAppliedFilters.laundry = '';
       newDraftFilters.laundry = '';
-    } else if (filterText === 'Parking') {
+    } else if (filterText === t('parking')) {
       newAppliedFilters.parking = undefined;
       newDraftFilters.parking = undefined;
-    } else if (filterText === 'Pets') {
+    } else if (filterText === t('petsAllowed')) {
       newAppliedFilters.pets_allowed = undefined;
       newDraftFilters.pets_allowed = undefined;
-    } else if (filterText === 'Furnished') {
+    } else if (filterText === t('furnished')) {
       newAppliedFilters.is_furnished = undefined;
       newDraftFilters.is_furnished = undefined;
-    } else if (filterText === 'Utilities') {
+    } else if (filterText === t('utilitiesIncluded')) {
       newAppliedFilters.utilities_included = undefined;
       newDraftFilters.utilities_included = undefined;
-    } else if (filterText === 'No Broker Fee') {
+    } else if (filterText === t('noBrokerFee')) {
       newAppliedFilters.broker_fee_required = undefined;
       newDraftFilters.broker_fee_required = undefined;
     }
@@ -329,9 +329,11 @@ export default function FeedScreen() {
             </View>
             <View style={styles.chipContainer}>
               {['1', '2', '3', '4+'].map(num => (
-                <Pressable key={num} style={[styles.chip, draftFilters.beds === num && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, beds: f.beds === num ? '' : num }))}>
-                  <Text style={[styles.chipText, draftFilters.beds === num && styles.chipTextSelected]}>{num} {num !== '4+' ? t('bed') : t('beds')}</Text>
-                </Pressable>
+                              <Pressable key={num} style={[styles.chip, draftFilters.beds === num && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, beds: f.beds === num ? '' : num }))}>
+                <Text style={[styles.chipText, draftFilters.beds === num && styles.chipTextSelected]}>
+                  {num} {num !== '4+' ? t('bed') : t('beds')}
+                </Text>
+              </Pressable>
               ))}
             </View>
           </View>
@@ -351,7 +353,9 @@ export default function FeedScreen() {
                 { value: 'none', key: 'none' }
               ].map(({ value, key }) => (
                 <Pressable key={value} style={[styles.chip, draftFilters.laundry === value && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, laundry: f.laundry === value ? '' : value }))}>
-                  <Text style={[styles.chipText, draftFilters.laundry === value && styles.chipTextSelected]}>{t(key as TranslationKey)}</Text>
+                  <Text style={[styles.chipText, draftFilters.laundry === value && styles.chipTextSelected]}>
+                    {t(key as TranslationKey)}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -365,19 +369,29 @@ export default function FeedScreen() {
             </View>
             <View style={styles.chipContainer}>
               <Pressable style={[styles.chip, draftFilters.parking && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, parking: !f.parking }))}>
-                <Text style={[styles.chipText, draftFilters.parking && styles.chipTextSelected]}>{t('parking')}</Text>
+                <Text style={[styles.chipText, draftFilters.parking && styles.chipTextSelected]}>
+                  {t('parking')}
+                </Text>
               </Pressable>
               <Pressable style={[styles.chip, draftFilters.pets_allowed && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, pets_allowed: !f.pets_allowed }))}>
-                <Text style={[styles.chipText, draftFilters.pets_allowed && styles.chipTextSelected]}>{t('petsAllowed')}</Text>
+                <Text style={[styles.chipText, draftFilters.pets_allowed && styles.chipTextSelected]}>
+                  {t('petsAllowed')}
+                </Text>
               </Pressable>
               <Pressable style={[styles.chip, draftFilters.is_furnished && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, is_furnished: !f.is_furnished }))}>
-                <Text style={[styles.chipText, draftFilters.is_furnished && styles.chipTextSelected]}>{t('furnished')}</Text>
+                <Text style={[styles.chipText, draftFilters.is_furnished && styles.chipTextSelected]}>
+                  {t('furnished')}
+                </Text>
               </Pressable>
               <Pressable style={[styles.chip, draftFilters.utilities_included && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, utilities_included: !f.utilities_included }))}>
-                <Text style={[styles.chipText, draftFilters.utilities_included && styles.chipTextSelected]}>{t('utilitiesIncluded')}</Text>
+                <Text style={[styles.chipText, draftFilters.utilities_included && styles.chipTextSelected]}>
+                  {t('utilitiesIncluded')}
+                </Text>
               </Pressable>
               <Pressable style={[styles.chip, draftFilters.broker_fee_required === false && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, broker_fee_required: f.broker_fee_required === false ? undefined : false }))}>
-                <Text style={[styles.chipText, draftFilters.broker_fee_required === false && styles.chipTextSelected]}>{t('noBrokerFee')}</Text>
+                <Text style={[styles.chipText, draftFilters.broker_fee_required === false && styles.chipTextSelected]}>
+                  {t('noBrokerFee')}
+                </Text>
               </Pressable>
             </View>
           </View>

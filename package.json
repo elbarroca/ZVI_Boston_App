@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "expo": "~52.0.47",
     "expo-auth-session": "~6.0.3",
+    "expo-av": "~15.0.2",
     "expo-constants": "~17.0.2",
     "expo-dev-client": "~5.0.20",
     "expo-image": "~2.0.7",
