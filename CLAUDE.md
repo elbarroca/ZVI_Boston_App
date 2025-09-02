@@ -73,7 +73,7 @@ Required environment variables:
 
 ### Development Notes
 - Uses Expo Router with typed routes enabled
-- Package scheme: `com.zvi.studenthousing`
+- Package scheme: `com.zentro.studenthousing`
 - Google Services configured for Android
 - Deep linking support with multiple URL schemes
 - Image caching and optimization utilities in `lib/utils.ts`

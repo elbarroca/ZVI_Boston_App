@@ -93,9 +93,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.zvi.studenthousing'
+    namespace 'com.zentro.studenthousing'
     defaultConfig {
-        applicationId 'com.zvi.studenthousing'
+        applicationId 'com.zentro.studenthousing'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

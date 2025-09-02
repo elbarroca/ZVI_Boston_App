@@ -40,7 +40,7 @@ export default function AuthScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
       <View style={styles.headerContainer}>
-        <Text style={styles.header}>ZVI</Text>
+        <Text style={styles.header}>zentro</Text>
         <Text style={styles.subHeader}>
           {isSignUp ? 'Create your account to get started.' : 'Welcome back. Find your place.'}
         </Text>

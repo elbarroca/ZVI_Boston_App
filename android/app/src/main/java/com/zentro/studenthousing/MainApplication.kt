@@ -1,4 +1,4 @@
-package com.zvi.studenthousing
+package com.zentro.studenthousing
 
 import android.app.Application
 import android.content.res.Configuration

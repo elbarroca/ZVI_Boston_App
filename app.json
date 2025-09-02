@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "ExpoSupabaseStarter",
-    "slug": "zvi",
-    "scheme": "com.zvi.studenthousing",
+    "slug": "zentro",
+    "scheme": "com.zentro.studenthousing",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.zvi.studenthousing",
+      "bundleIdentifier": "com.zentro.studenthousing",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby listings on the map.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby listings on the map."
@@ -26,7 +26,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png"
       },
-      "package": "com.zvi.studenthousing",
+      "package": "com.zentro.studenthousing",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBBgae_cwRrZqvI9jW2Y1UA2R7L7_SwhLE"
@@ -37,7 +37,7 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "zvi"
+              "scheme": "zentro"
             }
           ],
           "category": [
@@ -49,7 +49,7 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "exp+zvi"
+              "scheme": "exp+zentro"
             }
           ],
           "category": [
@@ -61,7 +61,7 @@
           "action": "VIEW",
           "data": [
             {
-              "scheme": "com.zvi.studenthousing"
+              "scheme": "com.zentro.studenthousing"
             }
           ],
           "category": [
