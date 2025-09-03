@@ -14,6 +14,8 @@ import ImageCarousel from '@/components/ImageCarousel';
 import ImageGalleryModal from '@/components/ImageGalleryModal';
 import TourConfirmationModal from '@/components/TourConfirmationModal';
 import { Image } from 'expo-image';
+import MapView, { Marker } from 'react-native-maps';
+import { TourService } from '@/lib/tourService';
 
 type MediaItem = {
     url: string;
@@ -31,6 +33,7 @@ export default function ListingDetailScreen() {
 	const [showTourModal, setShowTourModal] = useState(false);
 	const [showImageModal, setShowImageModal] = useState(false);
 	const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+	const [hasRequestedTour, setHasRequestedTour] = useState(false);
 
 	const queryClient = useQueryClient();
 
@@ -51,14 +54,27 @@ export default function ListingDetailScreen() {
 
 	const media = useMemo(() => {
 		if (!listing?.image_urls) return [];
-		return listing.image_urls.map((url: string) => ({ url, type: 'image' as const }));
+		return listing.image_urls.map((url: string) => ({
+			url,
+			type: (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi')) ? 'video' as const : 'image' as const
+		}));
 	}, [listing?.image_urls]);
 
 	useEffect(() => {
 		const checkStatus = async () => {
 			if (!user || !listing) return;
+
+			// Check if listing is saved
 			const { data } = await supabase.from('saved_listings').select('id').eq('user_id', user.id).eq('listing_id', listing.id).single();
 			setIsSaved(!!data);
+
+			// Check if user has already requested a tour for this listing
+			try {
+				const hasExistingRequest = await TourService.hasUserRequestedTourForListing(user.id, listing.id);
+				setHasRequestedTour(hasExistingRequest);
+			} catch (error) {
+				console.error('Error checking tour request status:', error);
+			}
 		};
 		checkStatus();
 	}, [user, listing]);
@@ -84,7 +100,14 @@ export default function ListingDetailScreen() {
 	};
 
 	const handleRequestTour = () => {
-		if (!user) { Alert.alert('Please sign in to request a tour'); return; }
+		if (!user) {
+			Alert.alert('Please sign in to request a tour');
+			return;
+		}
+		if (hasRequestedTour) {
+			Alert.alert('Tour Already Requested', 'You have already requested a tour for this listing. We\'ll contact you soon with confirmation details.');
+			return;
+		}
 		setShowTourModal(true);
 	};
 
@@ -143,7 +166,7 @@ export default function ListingDetailScreen() {
 							<DetailItem label={t('price')} value={`$${listing.price_per_month.toLocaleString()}/mo`} colors={colors} />
 							<DetailItem label={t('beds')} value={listing.bedrooms.toString()} colors={colors} />
 							<DetailItem label={t('baths')} value={listing.bathrooms.toString()} colors={colors} />
-							<DetailItem label={t('lease')} value={`${listing.lease_duration_months} ${t('months')}`} colors={colors} />
+							<DetailItem label={t('sqft')} value={`${listing.square_feet || 'N/A'} ${listing.square_feet ? t('sqft') : ''}`} colors={colors} />
 						</View>
 						<Separator color={colors.border} />
 						<Text style={[styles.sectionTitle, { color: colors.text }]}>{t('aboutThisPlace')}</Text>
@@ -155,14 +178,58 @@ export default function ListingDetailScreen() {
 							<AmenityItem icon="paw-outline" text={getAmenityText('pets_allowed', 'petsAllowed')} colors={colors} />
 							<AmenityItem icon="bed-outline" text={getAmenityText('is_furnished', 'furnished')} colors={colors} />
 						</View>
+						<Separator color={colors.border} />
+						<Text style={[styles.sectionTitle, { color: colors.text }]}>{t('location')}</Text>
+						<Text style={[styles.mapSubtitle, { color: colors.textSecondary }]}>📍 Tap to explore the neighborhood</Text>
+						<View style={styles.mapContainer}>
+							<MapView
+								style={styles.map}
+								initialRegion={{
+									latitude: listing.latitude || 42.3601,
+									longitude: listing.longitude || -71.0589,
+									latitudeDelta: 0.015,
+									longitudeDelta: 0.015,
+								}}
+								scrollEnabled={true}
+								zoomEnabled={true}
+								showsUserLocation={true}
+								showsMyLocationButton={true}
+								showsCompass={true}
+								showsScale={true}
+								rotateEnabled={true}
+								pitchEnabled={true}
+								mapType="standard"
+								maxZoomLevel={20}
+								minZoomLevel={10}
+							>
+								{listing.latitude && listing.longitude && (
+									<Marker
+										coordinate={{ latitude: listing.latitude, longitude: listing.longitude }}
+										title={listing.title}
+									/>
+								)}
+							</MapView>
+						</View>
 					</View>
 				</ScrollView>
 
 				{/* Footer - Outside ScrollView, always accessible */}
 				<View style={[styles.footerContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
 					<View style={styles.footer}>
-						<Pressable style={[styles.requestButton, { backgroundColor: colors.primary }]} onPress={handleRequestTour}>
-							<Text style={styles.requestButtonText}>🏠 Request a Tour</Text>
+						<Pressable
+							style={[
+								styles.requestButton,
+								{
+									backgroundColor: hasRequestedTour ? colors.textMuted : colors.primary,
+									opacity: hasRequestedTour ? 0.6 : 1
+								}
+							]}
+							onPress={handleRequestTour}
+							disabled={hasRequestedTour}
+						>
+							<Text style={styles.requestButtonText}>
+								{hasRequestedTour ? '✅ Tour Requested' : '🏠 Request a Tour'}
+							</Text>
 						</Pressable>
 						<Pressable style={[styles.shareButton, { borderColor: colors.border }]} onPress={handleShare}>
 							<Ionicons name="share-outline" size={24} color={colors.text} />
@@ -214,7 +281,7 @@ const styles = StyleSheet.create({
 	content: { padding: 20 },
 	title: { fontSize: 26, fontWeight: 'bold' },
 	address: { fontSize: 16, marginTop: 4 },
-	proximityChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ecfdf5', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 16, alignSelf: 'flex-start', gap: 6 },
+	proximityChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff8ff', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 16, alignSelf: 'flex-start', gap: 6 },
 	proximityText: { fontSize: 14, fontWeight: '500' },
 	detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20 },
 	detailItem: { width: '48%', marginBottom: 16 },
@@ -222,6 +289,7 @@ const styles = StyleSheet.create({
 	detailValue: { fontSize: 18, fontWeight: '600' },
 	separator: { height: 1, marginVertical: 24 },
 	sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
+	mapSubtitle: { fontSize: 14, marginBottom: 12, fontWeight: '500' },
 	description: { fontSize: 16, lineHeight: 24 },
 	amenitiesContainer: { gap: 16 },
 	amenityItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -234,4 +302,20 @@ const styles = StyleSheet.create({
 	modalContainer: { flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' },
 	closeButton: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, right: 20, zIndex: 1 },
 	fullScreenImage: { width: '100%', height: '100%' },
+	mapContainer: {
+		height: 280,
+		borderRadius: 16,
+		overflow: 'hidden',
+		marginTop: 4,
+		borderWidth: 1,
+		borderColor: '#e5e7eb',
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 4,
+		elevation: 3,
+	},
+	map: {
+		...StyleSheet.absoluteFillObject,
+	},
 });

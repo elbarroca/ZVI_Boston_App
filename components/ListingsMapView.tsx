@@ -40,12 +40,12 @@ const attractionPins = [
 function getAttractionColor(type: string) {
   switch (type) {
     case 'sports': return '#FF4500'; // Orange
-    case 'fitness': return '#32CD32'; // Lime Green  
-    case 'park': return '#228B22'; // Forest Green
+    case 'fitness': return '#60a5fa'; // Light Blue  
+    case 'park': return '#3b82f6'; // Blue
     case 'food': return '#FF6347'; // Tomato
     case 'shopping': return '#9932CC'; // Purple
     case 'nightlife': return '#FF1493'; // Deep Pink
-    default: return '#10B981';
+    default: return '#1570ef';
   }
 }
 
@@ -131,7 +131,7 @@ function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
           <Text style={styles.legendText}>{t('housing')}</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.legendDot, { backgroundColor: '#1570ef' }]} />
           <Text style={styles.legendText}>{t('attractions')}</Text>
         </View>
       </View>
@@ -201,7 +201,7 @@ export default function ListingsMapView() {
             <Text style={styles.legendText}>{t('housing')}</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <View style={[styles.legendDot, { backgroundColor: '#1570ef' }]} />
             <Text style={styles.legendText}>{t('attractions')}</Text>
           </View>
         </View>

@@ -164,16 +164,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 {(() => {
                   if (listing.property_type) {
                     const translated = t(listing.property_type.toLowerCase() as TranslationKey);
-                    if (translated && translated !== listing.property_type.toLowerCase()) {
-                      return translated;
-                    } else {
-                      return (
-                        listing.property_type.charAt(0).toUpperCase() +
-                        listing.property_type.slice(1).toLowerCase()
-                      );
-                    }
+                    return (
+                      <Text>
+                        {translated !== listing.property_type.toLowerCase()
+                          ? translated
+                          : <Text>{listing.property_type.charAt(0).toUpperCase() + listing.property_type.slice(1).toLowerCase()}</Text>}
+                      </Text>
+                    );
                   }
-                  return 'Apartment';
+                  return <Text>Apartment</Text>;
                 })()}
               </Text>
             </View>
@@ -182,18 +181,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <View style={styles.detailItem}>
                 <Ionicons name="bed" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {listing.bedrooms || 0} {listing.bedrooms === 1 ? t('bed') || 'bed' : t('beds') || 'beds'}
+                  {`${listing.bedrooms} ${listing.bedrooms === 1 ? t('bed') : t('beds')}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="water" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {listing.bathrooms || 0} {listing.bathrooms === 1 ? t('bath') || 'bath' : t('baths') || 'baths'}
+                  {`${listing.bathrooms} ${listing.bathrooms === 1 ? t('bath') : t('baths')}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="resize" size={16} color={colors.primary} />
-                <Text style={[styles.detailText, { color: colors.text }]}>{listing.square_feet || 0} {translate('sqft') || 'sqft'}</Text>
+                <Text style={[styles.detailText, { color: colors.text }]}>{`${listing.square_feet} ${translate('sqft')}`}</Text>
               </View>
             </View>
 
@@ -201,7 +200,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             <View style={styles.locationContainer}>
               <Ionicons name="location" size={16} color={colors.textSecondary} />
               <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
-                {listing.neighborhood || 'Area'}, {listing.location_address || 'Address'}
+                {listing.neighborhood}, {listing.location_address}
               </Text>
             </View>
 
@@ -210,7 +209,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <View style={styles.universityContainer}>
                 <Ionicons name="school" size={16} color={colors.primary} />
                 <Text style={[styles.universityText, { color: colors.textSecondary }]}>
-                  {listing.university_proximity_minutes || 0} {translate('minTo') || 'min to'} {listing.nearest_university || 'University'}
+                  {`${listing.university_proximity_minutes} ${translate('minTo')} ${listing.nearest_university}`}
                 </Text>
               </View>
             )}
@@ -220,33 +219,33 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               {listing.is_furnished && (
                 <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="home" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('furnished') || 'Furnished'}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('furnished')}</Text>
                 </View>
               )}
               {listing.utilities_included && (
                 <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="flash" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('utilitiesIncluded') || 'Utilities'}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('utilitiesIncluded')}</Text>
                 </View>
               )}
               {listing.pets_allowed && (
                 <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="paw" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('pets') || 'Pets'}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('pets')}</Text>
                 </View>
               )}
               {listing.laundry_type && listing.laundry_type !== 'none' && (
                 <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="shirt" size={14} color={colors.primary} />
                   <Text style={[styles.amenityText, { color: colors.primary }]}>
-                    {listing.laundry_type === 'in-unit' ? translate('inUnitLaundry') || 'In-Unit Laundry' : translate('laundry') || 'Laundry'}
+                    {listing.laundry_type === 'in-unit' ? translate('inUnitLaundry') : translate('laundry')}
                   </Text>
                 </View>
               )}
               {listing.parking_type && listing.parking_type !== 'none' && (
                 <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="car" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('parking') || 'Parking'}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('parking')}</Text>
                 </View>
               )}
             </View>
@@ -254,9 +253,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Price */}
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>
-                ${listing.price_per_month.toLocaleString()}
+                {`$${listing.price_per_month.toLocaleString()} `}
               </Text>
-              <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}> {translate('perMonth')}</Text>
+              <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>{translate('perMonth')}</Text>
             </View>
           </Pressable>
           <Pressable onPress={toggleSave} style={[styles.heartButton, {

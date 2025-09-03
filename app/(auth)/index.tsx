@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     lineHeight: Platform.OS === 'web' ? 24 : 22,
   },
   linkText: {
-    color: '#00A896',
+    color: '#1570ef',
     fontWeight: '700',
     textDecorationLine: 'underline'
   }

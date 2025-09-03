@@ -5,7 +5,7 @@ export interface TourRequestData {
   user_id: string;
   listing_id: string;
   selected_dates: string[];
-  selected_time_slots: { time: string; priority: number }[];
+  selected_time_slots: { time: string; priority: number; date: string }[];
   contact_phone?: string;
   contact_method: 'email' | 'phone' | 'both';
   notes?: string;
@@ -29,7 +29,7 @@ export class TourService {
     listingId: string,
     tourData: {
       dates: string[];
-      timeSlots: { time: string; priority: number }[];
+      timeSlots: { time: string; priority: number; date: string }[];
       notes?: string;
       phoneNumber?: string;
       countryCode?: string;
@@ -41,13 +41,13 @@ export class TourService {
       const contactMethod = tourData.phoneNumber ? 'both' : 'email';
       const contactPhone = tourData.phoneNumber ? `${tourData.countryCode}${tourData.phoneNumber}` : null;
 
-      // Create preferred times summary
+      // Create preferred times summary with dates
       const preferredTimesSummary = tourData.timeSlots
         .sort((a, b) => a.priority - b.priority)
-        .map(slot => `${slot.priority}. ${slot.time}`)
+        .map(slot => `${slot.priority}. ${slot.date} at ${slot.time}`)
         .join(', ');
 
-      // Find the highest priority slot
+      // Find the highest priority slot (including date info)
       const prioritySlot = tourData.timeSlots.length > 0
         ? tourData.timeSlots.sort((a, b) => a.priority - b.priority)[0].time
         : null;
