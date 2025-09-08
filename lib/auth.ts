@@ -1,63 +1,96 @@
 // lib/auth.ts
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '@/config/supabase';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
+import { Platform } from 'react-native';
+import { router } from 'expo-router';
 
 // Configure Google Sign-In (call this once, typically in your app startup)
 export const configureGoogleSignIn = () => {
-  GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-    // Add offlineAccess: true if you need a serverAuthCode for backend access
+  // Warm up the browser for faster OAuth
+  WebBrowser.warmUpAsync();
+
+  // Configure deep linking for OAuth redirects
+  Linking.addEventListener('url', (event) => {
+    // Handle OAuth callback deep links
+    if (event.url.includes('/auth/callback')) {
+      // The router will handle navigation to the callback screen
+    }
   });
+};
+
+// Get the appropriate redirect URI for the current platform
+const getRedirectUri = () => {
+  if (Platform.OS === 'web') {
+    return `${window.location.origin}/auth/callback`;
+  }
+
+  // For mobile, always use the custom scheme - this works for both dev and prod
+  // In development, Expo will handle the routing from the browser back to the app
+  return 'com.zentro.studenthousing://auth/callback';
 };
 
 // This function will be called from your Auth screen
 export const signInWithGoogle = async () => {
   try {
-    console.log('--- Starting NEW Google Sign-In with @react-native-google-signin ---');
+    const redirectUri = getRedirectUri();
 
-    // 1. Check if the user has Google Play Services installed
-    await GoogleSignin.hasPlayServices();
-    console.log('--- Google Play Services available ---');
+    // Use Supabase's built-in OAuth method which handles PKCE properly
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUri,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
+      },
+    });
 
-    // 2. Start the native sign-in flow
-    const userInfo = await GoogleSignin.signIn();
-    console.log('--- Native Google Sign-In completed ---');
-
-    // 3. Check if we got user info and extract idToken
-    if (userInfo && userInfo.data && userInfo.data.idToken) {
-      console.log('--- Got ID token, signing in with Supabase ---');
-
-      // 4. Use the idToken to sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: userInfo.data.idToken,
-      });
-
-      if (error) {
-        console.error('--- Supabase sign-in error:', error);
-        throw error;
-      }
-
-      console.log('--- Supabase sign-in successful ---');
-      return data;
-    } else {
-      console.error('--- No ID token returned from Google ---');
-      throw new Error('Google Sign-In failed: No ID token returned.');
+    if (error) {
+      throw error;
     }
-  } catch (error: any) {
-    console.error('--- Google Sign-In Error:', error.code, error.message);
 
-    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-      console.log('--- User cancelled the login flow ---');
-    } else if (error.code === statusCodes.IN_PROGRESS) {
-      console.log('--- Sign in is in progress already ---');
-      Alert.alert('Sign-In In Progress', 'Please wait for the current sign-in to complete.');
-    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-      Alert.alert('Error', 'Google Play Services not available or outdated.');
+    // For mobile, we need to handle the browser redirect
+    if (Platform.OS !== 'web') {
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url!,
+        redirectUri,
+        {
+          showInRecents: true,
+        }
+      );
+
+      if (result.type === 'success') {
+        // Extract authorization code and navigate to callback screen
+        if (result.url && result.url.includes('auth/callback')) {
+          const urlObj = new URL(result.url);
+          const code = urlObj.searchParams.get('code');
+
+          if (code) {
+            // Navigate directly to callback screen for Expo Go
+            setTimeout(() => {
+              router.replace({
+                pathname: '/auth/callback',
+                params: { code: code }
+              });
+            }, 500);
+          }
+        }
+
+        return { success: true, url: result.url };
+      } else {
+        return null;
+      }
+    }
+
+    return data;
+  } catch (error: any) {
+    if (error.message?.includes('cancelled') || error.message?.includes('dismissed')) {
+      // User cancelled the login flow
     } else {
-      // Some other error happened
-      Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+      Alert.alert('Sign-In Error', error.message || 'An unexpected error occurred. Please try again.');
     }
     return null;
   }

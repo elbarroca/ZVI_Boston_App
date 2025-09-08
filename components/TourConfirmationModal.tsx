@@ -12,6 +12,7 @@ import { useSupabaseAuth } from '@/context/supabase-provider';
 interface TourConfirmationModalProps {
   isVisible: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
   listingId: string;
   showComingSoon?: boolean;
 }
@@ -109,7 +110,7 @@ const validatePhoneNumber = (phoneNumber: string, countryCode: string): { isVali
   return { isValid: true };
 };
 
-export default function TourConfirmationModal({ isVisible, onClose, listingId, showComingSoon }: TourConfirmationModalProps) {
+export default function TourConfirmationModal({ isVisible, onClose, onSuccess, listingId, showComingSoon }: TourConfirmationModalProps) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { session } = useSupabaseAuth();
@@ -280,6 +281,19 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
     }
   };
 
+  const resetModalState = () => {
+    setSelectedDaySlots([]);
+    setSelectedDates({});
+    setSelectedPeriods({});
+    setNotes('');
+    setPhoneNumber('');
+    setSelectedCountryCode('+1');
+    setIsCountryPickerVisible(false);
+    setPhoneValidationError(null);
+    setIsSummaryModalVisible(false);
+    setIsSubmitting(false);
+  };
+
   const handleSubmitTourRequest = async () => {
     if (selectedDaySlots.length === 0) {
       Alert.alert(t('selectDateTime'));
@@ -309,6 +323,7 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
       const hasExistingRequest = await TourService.hasUserRequestedTourForListing(session.user.id, listingId);
       if (hasExistingRequest) {
         Alert.alert(t('tourRequestAlreadyExists'));
+        setIsSubmitting(false);
         return;
       }
 
@@ -320,7 +335,7 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
         }
         groupedByDate[slot.date].push({time: slot.time, priority: slot.priority});
       });
-      
+
       await TourService.createTourRequest(listingId, {
         dates: Object.keys(groupedByDate),
         timeSlots: selectedDaySlots.map((slot: {date: string, time: string, priority: number}) => ({
@@ -332,8 +347,14 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
         phoneNumber,
         countryCode: selectedCountryCode,
       }, session.user.id);
-      
+
+      // Successfully submitted - show summary modal
       setIsSummaryModalVisible(true);
+
+      // Call success callback to update parent state
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error: unknown) {
       console.error('Error submitting tour request:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -348,16 +369,41 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
       animationType="slide"
       transparent={true}
       visible={isVisible}
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        resetModalState();
+        onClose();
+      }}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent={true}
+      hardwareAccelerated={true}
     >
-      <Pressable style={styles.modalBackdrop} onPress={onClose} />
+      <Pressable
+        style={styles.modalBackdrop}
+        onPress={() => {
+          resetModalState();
+          onClose();
+        }}
+      />
       <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
         <View style={styles.modalHeader}>
+          <Pressable
+            onPress={() => {
+              resetModalState();
+              onClose();
+            }}
+            style={styles.backButton}
+            android_ripple={{ color: colors.primary + '20', borderless: true }}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </Pressable>
           <View style={styles.modalTitleContainer}>
             <Ionicons name="calendar-outline" size={24} color={colors.primary} />
             <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectTourDateTime')}</Text>
           </View>
-          <Pressable onPress={onClose}>
+          <Pressable onPress={() => {
+            resetModalState();
+            onClose();
+          }}>
             <Ionicons name="close" size={24} color={colors.textSecondary} />
           </Pressable>
         </View>
@@ -689,7 +735,7 @@ export default function TourConfirmationModal({ isVisible, onClose, listingId, s
         <TourRequestSummaryModal
           isVisible={isSummaryModalVisible}
           onClose={() => {
-            setIsSummaryModalVisible(false);
+            resetModalState();
             onClose();
           }}
           tourDetails={{
@@ -713,17 +759,16 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: 'white',
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: '100%',
     height: '90%',
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -731,10 +776,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 8,
+  },
   modalTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    justifyContent: 'center',
   },
   modalTitle: {
     fontSize: 22,

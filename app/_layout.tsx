@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Text, Pressable } from 'react-native';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/config/supabase';
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 // --- 1. IMPORT THE COMPONENT ---
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -24,43 +26,6 @@ const styles = StyleSheet.create({
   }
 });
 
-// Function to handle OAuth URL parameters
-const handleOAuthCallback = async () => {
-  if (typeof window !== 'undefined') {
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token=')) {
-      console.log('OAuth callback detected, extracting tokens from URL...');
-
-      try {
-        // Parse the hash parameters manually
-        const hashParams = new URLSearchParams(hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const expiresAt = hashParams.get('expires_at');
-
-        if (accessToken && refreshToken) {
-          console.log('Setting session from extracted tokens...');
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (error) {
-            console.error('Error setting session:', error);
-          } else if (data.session) {
-            console.log('Session successfully established from OAuth tokens');
-            // Clean up the URL
-            window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-          }
-        } else {
-          console.log('No valid tokens found in URL');
-        }
-      } catch (error) {
-        console.error('Error handling OAuth callback:', error);
-      }
-    }
-  }
-};
 
 // This is our Gatekeeper component. Its only job is to redirect.
 const InitialLayout = () => {
@@ -69,8 +34,67 @@ const InitialLayout = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Handle OAuth callback when component mounts or segments change
-    handleOAuthCallback();
+    // Set up deep link listener for OAuth callbacks
+    const handleDeepLink = ({ url }: { url: string }) => {
+
+      // Check if this is an OAuth callback
+      if (url.includes('auth/callback')) {
+        // Parse the URL to extract the authorization code
+        try {
+          const parsedUrl = Linking.parse(url);
+
+          if (parsedUrl.queryParams?.code) {
+            // Navigate to the auth callback route with the code as a parameter
+            router.replace({
+              pathname: '/auth/callback',
+              params: { code: parsedUrl.queryParams.code }
+            });
+          } else if (parsedUrl.queryParams?.access_token) {
+            // Handle direct token response
+            router.replace({
+              pathname: '/auth/callback',
+              params: parsedUrl.queryParams
+            });
+          } else {
+            router.replace('/auth/callback');
+          }
+        } catch (error) {
+          console.error('Error parsing deep link URL:', error);
+          router.replace('/auth/callback');
+        }
+      }
+    };
+
+    // Add deep link listener
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check initial URL when app starts
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes('auth/callback')) {
+        try {
+          const parsedUrl = Linking.parse(url);
+
+          if (parsedUrl.queryParams?.code) {
+            router.replace({
+              pathname: '/auth/callback',
+              params: { code: parsedUrl.queryParams.code }
+            });
+          } else if (parsedUrl.queryParams?.access_token) {
+            router.replace({
+              pathname: '/auth/callback',
+              params: parsedUrl.queryParams
+            });
+          } else {
+            router.replace('/auth/callback');
+          }
+        } catch (error) {
+          console.error('Error parsing initial OAuth URL:', error);
+          router.replace('/auth/callback');
+        }
+      }
+    }).catch((error) => {
+      console.error('Error getting initial URL:', error);
+    });
 
     // 1. Wait until the session is loaded.
     if (isLoading) {
@@ -92,6 +116,11 @@ const InitialLayout = () => {
       // This will also handle logout.
       router.replace('/(auth)');
     }
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.remove();
+    };
   }, [session, isLoading, segments, router]);
 
   // While checking for a session, show a loading spinner.

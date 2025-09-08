@@ -139,10 +139,10 @@ function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
   );
 }
 
-export default function ListingsMapView() {
+export default function ListingsMapView({ hideHeader = false }: { hideHeader?: boolean }) {
   const router = useRouter();
   const { t } = useLanguage();
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(!hideHeader);
 
   const toggleOverlay = () => setShowOverlay(prev => !prev);
 
@@ -174,7 +174,7 @@ export default function ListingsMapView() {
 
   return (
     <View style={styles.container}>
-      {showOverlay && (
+      {!hideHeader && showOverlay && (
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🗺️ {t('bostonStudentGuide')}</Text>
           <Text style={styles.headerSubtitle}>
@@ -182,15 +182,17 @@ export default function ListingsMapView() {
           </Text>
         </View>
       )}
-      <Pressable style={styles.toggleButton} onPress={toggleOverlay}>
-        <Ionicons
-          name={showOverlay ? "eye-off-outline" : "eye-outline"}
-          size={24}
-          color="#3B82F6"
-        />
-      </Pressable>
+      {!hideHeader && (
+        <Pressable style={styles.toggleButton} onPress={toggleOverlay}>
+          <Ionicons
+            name={showOverlay ? "eye-off-outline" : "eye-outline"}
+            size={24}
+            color="#3B82F6"
+          />
+        </Pressable>
+      )}
       <BostonAreaMap listings={listings || []} router={router} />
-      {showOverlay && (
+      {!hideHeader && showOverlay && (
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />

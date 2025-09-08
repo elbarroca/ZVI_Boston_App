@@ -39,6 +39,12 @@ export type Listing = {
 };
 
 export default function ListingCard({ listing }: { listing: Listing }) {
+  // Early return if listing data is invalid
+  if (!listing || typeof listing !== 'object') {
+    console.warn('Invalid listing data passed to ListingCard:', listing);
+    return null;
+  }
+
   const { theme } = useTheme();
   const { t } = useLanguage();
   const colors = themeColors[theme];
@@ -48,6 +54,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(listing.is_saved_by_user || false);
   const [isPreloading, setIsPreloading] = useState(false);
+
+  // Validate required fields and provide defaults
+  const safeTitle = listing.title || 'Untitled Property';
+  const safePrice = listing.price_per_month || 0;
+  const safeBedrooms = listing.bedrooms || 0;
+  const safeBathrooms = listing.bathrooms || 0;
+  const safeSquareFeet = listing.square_feet || 0;
+  const safeNeighborhood = listing.neighborhood || '';
+  const safeAddress = listing.location_address || '';
+  const safePropertyType = listing.property_type || 'apartment';
+  const safePreviewImage = listing.preview_image || '';
+  const safeNearestUniversity = listing.nearest_university || '';
 
   const toggleSave = async () => {
     if (!session?.user) {
@@ -82,12 +100,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   useEffect(() => {
     const preloadFeedImage = async () => {
       try {
+        // Only preload if image URL is valid
+        if (!safePreviewImage) return;
+        
         // Only preload if not already cached
-        const isCached = await persistentImageCache.isCached(listing.preview_image);
+        const isCached = await persistentImageCache.isCached(safePreviewImage);
         if (!isCached) {
           // Background caching - don't await to avoid blocking UI
-          persistentImageCache.cacheImage(listing.preview_image).catch(error => {
-            if (__DEV__) console.warn(`Background caching failed for ${listing.preview_image}:`, error);
+          persistentImageCache.cacheImage(safePreviewImage).catch(error => {
+            if (__DEV__) console.warn(`Background caching failed for ${safePreviewImage}:`, error);
           });
         }
       } catch (error) {
@@ -99,7 +120,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
     const timeoutId = setTimeout(preloadFeedImage, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [listing.preview_image]);
+  }, [safePreviewImage]);
 
   // Preload images for instant loading on detail page
   const preloadDetailImages = async () => {
@@ -136,7 +157,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
         }}
       >
         <Image
-          source={{ uri: listing.preview_image }}
+          source={{ uri: safePreviewImage }}
           style={styles.image}
           contentFit="cover"
         />
@@ -155,24 +176,22 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
             }}
           >
-            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{listing.title}</Text>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+              {safeTitle}
+            </Text>
             <View style={styles.propertyTypeContainer}>
               <Text style={[styles.propertyType, {
                 backgroundColor: colors.primary + '20',
                 color: colors.primary
               }]}>
                 {(() => {
-                  if (listing.property_type) {
-                    const translated = t(listing.property_type.toLowerCase() as TranslationKey);
-                    return (
-                      <Text>
-                        {translated !== listing.property_type.toLowerCase()
-                          ? translated
-                          : <Text>{listing.property_type.charAt(0).toUpperCase() + listing.property_type.slice(1).toLowerCase()}</Text>}
-                      </Text>
-                    );
+                  if (safePropertyType) {
+                    const translated = t(safePropertyType.toLowerCase() as TranslationKey);
+                    return translated !== safePropertyType.toLowerCase()
+                      ? translated
+                      : safePropertyType.charAt(0).toUpperCase() + safePropertyType.slice(1).toLowerCase();
                   }
-                  return <Text>Apartment</Text>;
+                  return 'Apartment';
                 })()}
               </Text>
             </View>
@@ -181,18 +200,20 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <View style={styles.detailItem}>
                 <Ionicons name="bed" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {`${listing.bedrooms} ${listing.bedrooms === 1 ? t('bed') : t('beds')}`}
+                  {`${safeBedrooms} ${safeBedrooms === 1 ? t('bed') : t('beds')}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="water" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {`${listing.bathrooms} ${listing.bathrooms === 1 ? t('bath') : t('baths')}`}
+                  {`${safeBathrooms} ${safeBathrooms === 1 ? t('bath') : t('baths')}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="resize" size={16} color={colors.primary} />
-                <Text style={[styles.detailText, { color: colors.text }]}>{`${listing.square_feet} ${translate('sqft')}`}</Text>
+                <Text style={[styles.detailText, { color: colors.text }]}>
+                  {`${safeSquareFeet} ${translate('sqft')}`}
+                </Text>
               </View>
             </View>
 
@@ -200,7 +221,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             <View style={styles.locationContainer}>
               <Ionicons name="location" size={16} color={colors.textSecondary} />
               <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
-                {listing.neighborhood}, {listing.location_address}
+                {`${safeNeighborhood}, ${safeAddress}`}
               </Text>
             </View>
 
@@ -209,7 +230,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <View style={styles.universityContainer}>
                 <Ionicons name="school" size={16} color={colors.primary} />
                 <Text style={[styles.universityText, { color: colors.textSecondary }]}>
-                  {`${listing.university_proximity_minutes} ${translate('minTo')} ${listing.nearest_university}`}
+                  {`${listing.university_proximity_minutes} ${translate('minTo')} ${safeNearestUniversity}`}
                 </Text>
               </View>
             )}
@@ -253,9 +274,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Price */}
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>
-                {`$${listing.price_per_month.toLocaleString()} `}
+                {`$${safePrice.toLocaleString()}`}
               </Text>
-              <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>{translate('perMonth')}</Text>
+              <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>
+                {` ${translate('perMonth')}`}
+              </Text>
             </View>
           </Pressable>
           <Pressable onPress={toggleSave} style={[styles.heartButton, {

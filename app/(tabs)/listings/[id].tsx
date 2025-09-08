@@ -1,7 +1,7 @@
 // app/(tabs)/listings/[id].tsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, Text, ActivityIndicator, StyleSheet, View, Pressable, Alert, Share, Platform, Modal } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getListingBySlugOrId, saveListing, unsaveListing } from '@/lib/api';
 import { useTheme } from '@/context/theme-provider';
@@ -28,6 +28,7 @@ export default function ListingDetailScreen() {
 	const { theme } = useTheme();
 	const { t } = useLanguage();
 	const colors = useMemo(() => themeColors[theme], [theme]);
+	const router = useRouter();
 	const [isSaved, setIsSaved] = useState(false);
 	const [isSaveLoading, setIsSaveLoading] = useState(false);
 	const [showTourModal, setShowTourModal] = useState(false);
@@ -111,6 +112,17 @@ export default function ListingDetailScreen() {
 		setShowTourModal(true);
 	};
 
+	const handleTourRequestSuccess = () => {
+		// Close the modal
+		setShowTourModal(false);
+		// Update the local state immediately
+		setHasRequestedTour(true);
+		// Invalidate queries to ensure fresh data
+		queryClient.invalidateQueries({ queryKey: ['listing', slugOrId] });
+		// Also invalidate any tour-related queries
+		queryClient.invalidateQueries({ queryKey: ['tour-requests'] });
+	};
+
 	const handleImagePress = (index: number) => {
 		setSelectedImageIndex(index);
 		setShowImageModal(true);
@@ -138,16 +150,31 @@ export default function ListingDetailScreen() {
 		return null;
 	};
 
-	if (isLoading) return <ActivityIndicator size="large" style={styles.center} />;
-	if (error || !listing) return <View style={styles.center}><Text style={styles.errorText}>{t('listingNotFound')}</Text></View>;
+	if (isLoading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
+	if (error || !listing) return <View style={[styles.center, { backgroundColor: colors.background }]}><Text style={[styles.errorText, { color: colors.error || '#ef4444' }]}>{t('listingNotFound')}</Text></View>;
 
 	return (
 		<>
-			<Stack.Screen options={{ title: '', headerTransparent: true, headerTintColor: colors.text }} />
-			<View style={styles.mainContainer}>
+			<Stack.Screen
+				options={{
+					title: '',
+					headerTransparent: true,
+					headerTintColor: colors.text,
+					headerLeft: () => (
+						<Pressable
+							onPress={() => router.back()}
+							style={styles.backButton}
+							android_ripple={{ color: colors.primary + '20', borderless: true }}
+						>
+							<Ionicons name="arrow-back" size={24} color={colors.text} />
+						</Pressable>
+					)
+				}}
+			/>
+			<View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
 				{/* ScrollView containing carousel and content */}
 				<ScrollView
-					style={styles.scrollView}
+					style={[styles.scrollView, { backgroundColor: colors.background }]}
 					contentContainerStyle={styles.scrollContent}
 					showsVerticalScrollIndicator={false}
 				>
@@ -157,7 +184,7 @@ export default function ListingDetailScreen() {
 						<Text style={[styles.title, { color: colors.text }]}>{listing.title}</Text>
 						<Text style={[styles.address, { color: colors.textSecondary }]}>{listing.location_address}</Text>
 						{listing.university_proximity_minutes && (
-							<View style={styles.proximityChip}>
+							<View style={[styles.proximityChip, { backgroundColor: colors.surface }]}>
 								<Ionicons name="school-outline" size={16} color={colors.success} />
 								<Text style={[styles.proximityText, { color: colors.success }]}>{`${listing.university_proximity_minutes}-minute walk to ${listing.nearest_university}`}</Text>
 							</View>
@@ -181,7 +208,7 @@ export default function ListingDetailScreen() {
 						<Separator color={colors.border} />
 						<Text style={[styles.sectionTitle, { color: colors.text }]}>{t('location')}</Text>
 						<Text style={[styles.mapSubtitle, { color: colors.textSecondary }]}>📍 Tap to explore the neighborhood</Text>
-						<View style={styles.mapContainer}>
+						<View style={[styles.mapContainer, { borderColor: colors.border }]}>
 							<MapView
 								style={styles.map}
 								initialRegion={{
@@ -248,6 +275,7 @@ export default function ListingDetailScreen() {
 			<TourConfirmationModal
 				isVisible={showTourModal}
 				onClose={() => setShowTourModal(false)}
+				onSuccess={handleTourRequestSuccess}
 				listingId={listing.id}
 			/>
 
@@ -272,7 +300,7 @@ const Separator = ({ color }: any) => <View style={[styles.separator, { backgrou
 
 const styles = StyleSheet.create({
 	center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-	errorText: { fontSize: 18, fontWeight: '600', color: '#ef4444', textAlign: 'center' },
+	errorText: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
 	mainContainer: { flex: 1 },
 	scrollView: { flex: 1 },
 	scrollContent: { paddingBottom: 100 }, // Space for footer
@@ -281,7 +309,7 @@ const styles = StyleSheet.create({
 	content: { padding: 20 },
 	title: { fontSize: 26, fontWeight: 'bold' },
 	address: { fontSize: 16, marginTop: 4 },
-	proximityChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff8ff', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 16, alignSelf: 'flex-start', gap: 6 },
+	proximityChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, marginTop: 16, alignSelf: 'flex-start', gap: 6 },
 	proximityText: { fontSize: 14, fontWeight: '500' },
 	detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 20 },
 	detailItem: { width: '48%', marginBottom: 16 },
@@ -308,7 +336,6 @@ const styles = StyleSheet.create({
 		overflow: 'hidden',
 		marginTop: 4,
 		borderWidth: 1,
-		borderColor: '#e5e7eb',
 		shadowColor: '#000',
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.1,
@@ -317,5 +344,10 @@ const styles = StyleSheet.create({
 	},
 	map: {
 		...StyleSheet.absoluteFillObject,
+	},
+	backButton: {
+		padding: 8,
+		borderRadius: 20,
+		marginLeft: 8,
 	},
 });

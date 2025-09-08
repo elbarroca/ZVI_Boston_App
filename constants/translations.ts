@@ -2,6 +2,7 @@ export const translations = {
   en: {
     // Common UI elements
     'findYourPlace': 'Find Your Place',
+    'feed': 'Feed',
     'discoverYourHome': 'Discover Your Perfect Home',
     'findIdealRental': 'Find the ideal rental that matches your lifestyle',
     'filters': 'Filters',
@@ -170,6 +171,7 @@ export const translations = {
   es: {
     // Common UI elements
     'findYourPlace': 'Encuentra Tu Lugar',
+    'feed': 'Feed',
     'discoverYourHome': 'Descubre Tu Hogar Perfecto',
     'findIdealRental': 'Encuentra el alquiler ideal que se adapte a tu estilo de vida',
     'filters': 'Filtros',
@@ -338,6 +340,7 @@ export const translations = {
   zh: {
     // Common UI elements
     'findYourPlace': '寻找您的住处',
+    'feed': 'Feed',
     'discoverYourHome': '发现您的完美家园',
     'findIdealRental': '找到适合您生活方式的理想租房',
     'filters': '筛选',
@@ -506,6 +509,7 @@ export const translations = {
   fr: {
     // Common UI elements
     'findYourPlace': 'Trouvez Votre Endroit',
+    'feed': 'Feed',
     'discoverYourHome': 'Découvrez Votre Maison Idéale',
     'findIdealRental': 'Trouvez la location idéale qui correspond à votre style de vie',
     'filters': 'Filtres',
@@ -674,6 +678,7 @@ export const translations = {
   pt: {
     // Common UI elements
     'findYourPlace': 'Encontre Seu Lugar',
+    'feed': 'Feed',
     'discoverYourHome': 'Descubra Sua Casa Perfeita',
     'findIdealRental': 'Encontre o aluguel ideal que se adapte ao seu estilo de vida',
     'filters': 'Filtros',
@@ -844,6 +849,7 @@ export const translations = {
   hi: {
     // Common UI elements
     'findYourPlace': 'अपना स्थान खोजें',
+    'feed': 'Feed',
     'discoverYourHome': 'अपना परफेक्ट घर खोजें',
     'findIdealRental': 'ऐसा किराया खोजें जो आपके जीवनशैली से मेल खाए',
     'filters': 'फिल्टर',
@@ -1014,6 +1020,7 @@ export const translations = {
   he: {
     // Common UI elements
     'findYourPlace': 'מצא את המקום שלך',
+    'feed': 'Feed',
     'discoverYourHome': 'גלה את הבית המושלם שלך',
     'findIdealRental': 'מצא השכרה אידיאלית שמתאימה לסגנון החיים שלך',
     'filters': 'מסננים',

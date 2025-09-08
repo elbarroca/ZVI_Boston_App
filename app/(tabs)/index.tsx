@@ -188,18 +188,6 @@ export default function FeedScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Stack.Screen
-        options={{
-          title: t('findYourPlace'),
-          headerTitleStyle: {
-            fontSize: 24,
-            fontWeight: 'bold',
-            color: colors.text
-          },
-          headerTitleAlign: 'center',
-        }}
-      />
-
       {/* Header Section */}
       <View style={[styles.headerSection, { backgroundColor: colors.background }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -267,7 +255,7 @@ export default function FeedScreen() {
       {/* Scrollable Content */}
       <View style={styles.scrollableContent}>
         <FlatList
-          data={listings}
+          data={listings?.filter(listing => listing && typeof listing === 'object' && listing.id) || []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ListingCard listing={item} />}
           contentContainerStyle={styles.listContent}
@@ -316,8 +304,8 @@ export default function FeedScreen() {
               <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('priceRange')}</Text>
             </View>
             <View style={styles.priceInputContainer}>
-              <TextInput style={styles.input} placeholder={t('minPrice')} value={draftFilters.minPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, minPrice: text }))} keyboardType="numeric" />
-              <TextInput style={styles.input} placeholder={t('maxPrice')} value={draftFilters.maxPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, maxPrice: text }))} keyboardType="numeric" />
+              <TextInput style={styles.input} placeholder={t('minPrice')} placeholderTextColor="#94A3B8" value={draftFilters.minPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, minPrice: text }))} keyboardType="numeric" />
+              <TextInput style={styles.input} placeholder={t('maxPrice')} placeholderTextColor="#94A3B8" value={draftFilters.maxPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, maxPrice: text }))} keyboardType="numeric" />
             </View>
           </View>
 
@@ -474,10 +462,10 @@ const styles = StyleSheet.create({
       borderBottomColor: '#E5E7EB'
     },
     headerTitle: {
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: 'bold',
       textAlign: 'center',
-      marginBottom: 8,
+      marginBottom: 6,
     },
     headerSubtitle: {
       fontSize: 16,

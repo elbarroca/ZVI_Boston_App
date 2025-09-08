@@ -57,13 +57,13 @@ export default function AuthScreen() {
           ]}
           onPress={async () => {
             console.log('--- TAPPED GOOGLE SIGN IN BUTTON ---');
-            console.log('--- Calling NEW signInWithGoogle from @react-native-google-signin ---');
+            console.log('--- Starting OAuth flow ---');
             const data = await signInWithGoogle();
             if (data) {
-              console.log('--- NEW Google sign-in successful ---');
-              // Navigation will be handled by the Supabase session change in _layout.tsx
+              console.log('--- OAuth initiated successfully ---');
+              console.log('--- Waiting for redirect back to app ---');
             } else {
-              console.log('--- NEW Google sign-in failed or was cancelled ---');
+              console.log('--- OAuth initiation failed ---');
             }
           }}
         >
@@ -83,6 +83,7 @@ export default function AuthScreen() {
         <TextInput
           style={[styles.input, { marginBottom: 16 }]} // Added marginBottom
           placeholder="Email"
+          placeholderTextColor="#94A3B8"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -91,6 +92,7 @@ export default function AuthScreen() {
         <TextInput
           style={[styles.input, { marginBottom: 24 }]} // Increased marginBottom for spacing before button
           placeholder="Password"
+          placeholderTextColor="#94A3B8"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Platform.OS === 'web' ? Math.max(32, screenWidth * 0.05) : 24,
-    paddingVertical: Platform.OS === 'web' ? Math.max(32, screenHeight * 0.05) : 24,
+    paddingVertical: Platform.OS === 'ios' ? Math.max(60, screenHeight * 0.1) : Platform.OS === 'web' ? Math.max(32, screenHeight * 0.05) : 24,
     minHeight: screenHeight,
     width: '100%'
   },
@@ -151,7 +153,8 @@ const styles = StyleSheet.create({
     // Removed flex: 1 to allow formContainer to take more space
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Platform.OS === 'web' ? 60 : 40,
+    marginBottom: Platform.OS === 'ios' ? 50 : Platform.OS === 'web' ? 60 : 40,
+    marginTop: Platform.OS === 'ios' ? 20 : 0,
     width: '100%',
     maxWidth: 400
   },

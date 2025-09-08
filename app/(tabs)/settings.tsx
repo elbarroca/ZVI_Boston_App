@@ -7,6 +7,7 @@ import { supabase } from '@/config/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage, LANGUAGES, TranslationKey } from '@/context/language-provider';
+import { Stack, useRouter } from 'expo-router';
 
 // A simple function to get the current user's profile
 const getProfile = async (userId: string) => {
@@ -49,6 +50,7 @@ export default function SettingsScreen() {
   const { theme, toggleTheme } = useTheme();
   const { currentLanguage, setLanguage, t } = useLanguage();
   const colors = themeColors[theme];
+  const router = useRouter();
   const [showLanguageModal, setShowLanguageModal] = React.useState(false);
 
   const { data: profile } = useQuery({
@@ -90,8 +92,27 @@ export default function SettingsScreen() {
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-      {/* Profile Section */}
+    <>
+      <Stack.Screen
+        options={{
+          title: t('settings'),
+          headerTintColor: colors.text,
+          headerStyle: { backgroundColor: colors.background },
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={styles.backButton}
+              android_ripple={{ color: colors.primary + '20', borderless: true }}
+            >
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </Pressable>
+          )
+        }}
+      />
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
+        {/* Top spacing for avatar */}
+        <View style={styles.topSpacing} />
+        {/* Profile Section */}
       <View style={[styles.profileSection, {
         backgroundColor: colors.surface,
         shadowColor: colors.shadow
@@ -358,6 +379,7 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
     </ScrollView>
+    </>
   );
 }
 
@@ -685,5 +707,13 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    marginLeft: 8,
+  },
+  topSpacing: {
+    height: 100,
   },
 });

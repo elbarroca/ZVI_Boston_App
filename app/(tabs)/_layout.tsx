@@ -24,9 +24,38 @@ export default function TabsLayout() {
       }
     : {
         tabBarActiveTintColor: colors.primary,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.background,
+          // iOS-specific styling for notch/dynamic island
+          ...(Platform.OS === 'ios' && {
+            shadowColor: 'transparent',
+            elevation: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          }),
+        },
+        headerTitleStyle: {
+          fontSize: 20,
+          fontWeight: 'bold' as const,
+          color: colors.text,
+          // iOS-specific spacing to account for notch/dynamic island
+          ...(Platform.OS === 'ios' && {
+            paddingTop: 8,
+            paddingBottom: 4,
+          }),
+        },
+        headerTintColor: colors.text,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          // iOS-specific styling
+          ...(Platform.OS === 'ios' && {
+            shadowColor: 'transparent',
+            elevation: 0,
+            height: 90, // Increased height for better touch targets
+            paddingBottom: 30, // Account for iPhone home indicator
+          }),
         }
       };
 
@@ -35,8 +64,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Feed',
-          headerShown: false,
+          title: t('feed'),
           tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
           ...(Platform.OS === 'web' && { href: '/(tabs)' })
         }}
@@ -45,7 +73,6 @@ export default function TabsLayout() {
         name="saved"
         options={{
           title: t('saved'),
-          headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons name="heart-outline" size={24} color={color} />,
           ...(Platform.OS === 'web' && { href: '/(tabs)/saved' })
         }}
@@ -54,7 +81,6 @@ export default function TabsLayout() {
         name="map"
         options={{
           title: t('map'),
-          headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons name="map-outline" size={24} color={color} />,
           ...(Platform.OS === 'web' && { href: '/(tabs)/map' })
         }}
@@ -63,7 +89,6 @@ export default function TabsLayout() {
         name="settings"
         options={{
           title: t('settings'),
-          headerShown: false,
           tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} />,
           ...(Platform.OS === 'web' && { href: '/(tabs)/settings' })
         }}

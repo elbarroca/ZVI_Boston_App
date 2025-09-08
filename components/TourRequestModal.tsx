@@ -75,6 +75,9 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
       transparent={true}
       visible={isVisible}
       onRequestClose={onClose}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent={true}
+      hardwareAccelerated={true}
     >
       <Pressable style={styles.modalBackdrop} onPress={onClose} />
       <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
@@ -83,7 +86,9 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
             <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
             <Text style={[styles.modalTitle, { color: colors.text }]}>Tour Request Confirmed!</Text>
           </View>
-          <Pressable onPress={onClose}>
+          <Pressable onPress={() => {
+            onClose();
+          }}>
             <Ionicons name="close" size={24} color={colors.textSecondary} />
           </Pressable>
         </View>
@@ -161,7 +166,9 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
           </View>
         </ScrollView>
 
-        <Pressable style={[styles.okButton, { backgroundColor: colors.primary }]} onPress={onClose}>
+        <Pressable style={[styles.okButton, { backgroundColor: colors.primary }]} onPress={() => {
+          onClose();
+        }}>
           <Text style={styles.okButtonText}>Got it, thanks!</Text>
         </Pressable>
       </View>
@@ -173,16 +180,14 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: 'white',
     padding: 20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    width: '100%',
     maxHeight: '85%', // Adjusted for summary to take less space than main modal
   },
   modalHeader: {
