@@ -1,6 +1,6 @@
 // app/(tabs)/index.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, FlatList, ActivityIndicator, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, Alert } from 'react-native';
+import { View, FlatList, ActivityIndicator, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, Alert, Animated } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { getListings } from '@/lib/api';
 import { useTheme } from '@/context/theme-provider';
@@ -44,6 +44,7 @@ export default function FeedScreen() {
   const { currentLanguage, setLanguage, t } = useLanguage();
   const colors = themeColors[theme];
 
+
   // Debug logging
   useEffect(() => {
     console.log('FeedScreen language changed to:', currentLanguage.name);
@@ -77,6 +78,9 @@ export default function FeedScreen() {
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
+
+  // Animation values for chip interactions
+  const chipScaleAnim = React.useRef(new Animated.Value(1)).current;
 
   // Debounce the applied filters to prevent excessive API calls
   const debouncedAppliedFilters = useDebounce(appliedFilters, 500);
@@ -206,7 +210,7 @@ export default function FeedScreen() {
             <Pressable
               style={[
                 styles.filterButton,
-                { backgroundColor: colors.primary },
+                { backgroundColor: '#1570ef' },
                 { alignSelf: 'flex-start' } // Ensure button only takes content width
               ]}
               onPress={() => setFilterModalVisible(true)}
@@ -219,22 +223,6 @@ export default function FeedScreen() {
             </Pressable>
           </View>
 
-          {/* Middle section - Active filters (expands to fill space) */}
-          {Object.values(appliedFilters).some(value => value !== '' && value !== undefined) && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.activeFiltersScroll}>
-              {getActiveFilters().map((filter, index) => (
-                <View key={index} style={[styles.activeFilterChip, { backgroundColor: colors.primary + '20' }]}>
-                  <Text style={[styles.activeFilterText, { color: colors.primary }]}>{filter}</Text>
-                  <Pressable
-                    onPress={() => removeFilter(filter)}
-                    style={styles.removeFilterButton}
-                  >
-                    <Ionicons name="close" size={12} color={colors.primary} />
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          )}
 
           {/* Right side - Language Selector */}
           <View style={styles.rightSection}>
@@ -251,6 +239,20 @@ export default function FeedScreen() {
           </View>
         </View>
       </View>
+
+      {/* Applied Filters Summary */}
+      {Object.values(appliedFilters).some(value => value !== '' && value !== undefined) && (
+        <View style={[styles.appliedFiltersSummary, { backgroundColor: colors.surface }]}>
+          <View style={styles.filterIndicators}>
+            {getActiveFilters().map((filter, index) => (
+              <View key={index} style={styles.filterIndicator}>
+                <View style={[styles.bulletPoint, { backgroundColor: colors.primary }]} />
+                <Text style={[styles.filterIndicatorText, { color: colors.textSecondary }]}>{filter}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Scrollable Content */}
       <View style={styles.scrollableContent}>
@@ -272,7 +274,10 @@ export default function FeedScreen() {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setFilterModalVisible(false)} />
-        <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+        <View style={[styles.modalContent, {
+          backgroundColor: colors.surface,
+          shadowColor: colors.shadow,
+        }]}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleContainer}>
               <Ionicons name="filter" size={24} color={colors.primary} />
@@ -304,8 +309,42 @@ export default function FeedScreen() {
               <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('priceRange')}</Text>
             </View>
             <View style={styles.priceInputContainer}>
-              <TextInput style={styles.input} placeholder={t('minPrice')} placeholderTextColor="#94A3B8" value={draftFilters.minPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, minPrice: text }))} keyboardType="numeric" />
-              <TextInput style={styles.input} placeholder={t('maxPrice')} placeholderTextColor="#94A3B8" value={draftFilters.maxPrice} onChangeText={(text) => setDraftFilters(f => ({ ...f, maxPrice: text }))} keyboardType="numeric" />
+              <TextInput
+                style={[styles.input, {
+                  color: colors.text,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  shadowColor: colors.shadow,
+                }]}
+                placeholder={t('minPrice')}
+                placeholderTextColor={colors.textSecondary}
+                value={draftFilters.minPrice}
+                onChangeText={(text) => setDraftFilters(f => ({ ...f, minPrice: text }))}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                selectTextOnFocus={true}
+                editable={true}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={[styles.input, {
+                  color: colors.text,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  shadowColor: colors.shadow,
+                }]}
+                placeholder={t('maxPrice')}
+                placeholderTextColor={colors.textSecondary}
+                value={draftFilters.maxPrice}
+                onChangeText={(text) => setDraftFilters(f => ({ ...f, maxPrice: text }))}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                selectTextOnFocus={true}
+                editable={true}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
             </View>
           </View>
 
@@ -316,13 +355,37 @@ export default function FeedScreen() {
               <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('bedrooms')}</Text>
             </View>
             <View style={styles.chipContainer}>
-              {['1', '2', '3', '4+'].map(num => (
-                              <Pressable key={num} style={[styles.chip, draftFilters.beds === num && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, beds: f.beds === num ? '' : num }))}>
-                <Text style={[styles.chipText, draftFilters.beds === num && styles.chipTextSelected]}>
-                  {num} {num !== '4+' ? t('bed') : t('beds')}
-                </Text>
-              </Pressable>
-              ))}
+              {['1', '2', '3', '4+'].map(num => {
+                const isSelected = draftFilters.beds === num;
+                return (
+                  <Pressable
+                    key={num}
+                    style={[
+                      styles.chip,
+                      isSelected && styles.chipSelected,
+                      {
+                        backgroundColor: isSelected ? '#1570ef' : colors.surface,
+                        borderColor: isSelected ? '#1570ef' : colors.border,
+                        shadowColor: isSelected ? '#1570ef' : colors.shadow,
+                      }
+                    ]}
+                    onPress={() => setDraftFilters(f => ({ ...f, beds: f.beds === num ? '' : num }))}
+                    android_ripple={{ color: '#1570ef30', borderless: false }}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isSelected && styles.chipTextSelected,
+                        {
+                          color: isSelected ? '#FFFFFF' : colors.text
+                        }
+                      ]}
+                    >
+                      {num} {num !== '4+' ? t('bed') : t('beds')}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -339,13 +402,27 @@ export default function FeedScreen() {
                 { value: 'in-unit', key: 'inUnit' },
                 { value: 'on-site', key: 'onSite' },
                 { value: 'none', key: 'none' }
-              ].map(({ value, key }) => (
-                <Pressable key={value} style={[styles.chip, draftFilters.laundry === value && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, laundry: f.laundry === value ? '' : value }))}>
-                  <Text style={[styles.chipText, draftFilters.laundry === value && styles.chipTextSelected]}>
-                    {t(key as TranslationKey)}
-                  </Text>
-                </Pressable>
-              ))}
+              ].map(({ value, key }) => {
+                const isSelected = draftFilters.laundry === value;
+                return (
+                  <Pressable
+                    key={value}
+                    style={[styles.chip, isSelected && styles.chipSelected, {
+                      backgroundColor: isSelected ? '#1570ef' : colors.surface,
+                      borderColor: isSelected ? '#1570ef' : colors.border,
+                      shadowColor: isSelected ? '#1570ef' : colors.shadow,
+                    }]}
+                    onPress={() => setDraftFilters(f => ({ ...f, laundry: f.laundry === value ? '' : value }))}
+                    android_ripple={{ color: '#1570ef30', borderless: false }}
+                  >
+                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected, {
+                      color: isSelected ? '#FFFFFF' : colors.text
+                    }]}>
+                      {t(key as TranslationKey)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
 
@@ -356,28 +433,88 @@ export default function FeedScreen() {
               <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('mustHaves')}</Text>
             </View>
             <View style={styles.chipContainer}>
-              <Pressable style={[styles.chip, draftFilters.parking && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, parking: !f.parking }))}>
-                <Text style={[styles.chipText, draftFilters.parking && styles.chipTextSelected]}>
+              <Pressable
+                style={[styles.chip, draftFilters.parking && styles.chipSelected, {
+                  backgroundColor: draftFilters.parking ? '#1570ef' : colors.surface,
+                  borderColor: draftFilters.parking ? '#1570ef' : colors.border,
+                  shadowColor: draftFilters.parking ? '#1570ef' : colors.shadow,
+                }]}
+                onPress={() => setDraftFilters(f => ({ ...f, parking: !f.parking }))}
+                android_ripple={{ color: '#1570ef30', borderless: false }}
+              >
+                <Text style={[styles.chipText, draftFilters.parking && styles.chipTextSelected, {
+                  color: draftFilters.parking ? '#FFFFFF' : colors.text,
+                  fontWeight: draftFilters.parking ? '700' : '500',
+                  fontSize: draftFilters.parking ? 15 : 14,
+                }]}>
                   {t('parking')}
                 </Text>
               </Pressable>
-              <Pressable style={[styles.chip, draftFilters.pets_allowed && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, pets_allowed: !f.pets_allowed }))}>
-                <Text style={[styles.chipText, draftFilters.pets_allowed && styles.chipTextSelected]}>
+              <Pressable
+                style={[styles.chip, draftFilters.pets_allowed && styles.chipSelected, {
+                  backgroundColor: draftFilters.pets_allowed ? '#1570ef' : colors.surface,
+                  borderColor: draftFilters.pets_allowed ? '#1570ef' : colors.border,
+                  shadowColor: draftFilters.pets_allowed ? '#1570ef' : colors.shadow,
+                }]}
+                onPress={() => setDraftFilters(f => ({ ...f, pets_allowed: !f.pets_allowed }))}
+                android_ripple={{ color: '#1570ef30', borderless: false }}
+              >
+                <Text style={[styles.chipText, draftFilters.pets_allowed && styles.chipTextSelected, {
+                  color: draftFilters.pets_allowed ? '#FFFFFF' : colors.text,
+                  fontWeight: draftFilters.pets_allowed ? '700' : '500',
+                  fontSize: draftFilters.pets_allowed ? 15 : 14,
+                }]}>
                   {t('petsAllowed')}
                 </Text>
               </Pressable>
-              <Pressable style={[styles.chip, draftFilters.is_furnished && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, is_furnished: !f.is_furnished }))}>
-                <Text style={[styles.chipText, draftFilters.is_furnished && styles.chipTextSelected]}>
+              <Pressable
+                style={[styles.chip, draftFilters.is_furnished && styles.chipSelected, {
+                  backgroundColor: draftFilters.is_furnished ? '#1570ef' : colors.surface,
+                  borderColor: draftFilters.is_furnished ? '#1570ef' : colors.border,
+                  shadowColor: draftFilters.is_furnished ? '#1570ef' : colors.shadow,
+                }]}
+                onPress={() => setDraftFilters(f => ({ ...f, is_furnished: !f.is_furnished }))}
+                android_ripple={{ color: '#1570ef30', borderless: false }}
+              >
+                <Text style={[styles.chipText, draftFilters.is_furnished && styles.chipTextSelected, {
+                  color: draftFilters.is_furnished ? '#FFFFFF' : colors.text,
+                  fontWeight: draftFilters.is_furnished ? '700' : '500',
+                  fontSize: draftFilters.is_furnished ? 15 : 14,
+                }]}>
                   {t('furnished')}
                 </Text>
               </Pressable>
-              <Pressable style={[styles.chip, draftFilters.utilities_included && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, utilities_included: !f.utilities_included }))}>
-                <Text style={[styles.chipText, draftFilters.utilities_included && styles.chipTextSelected]}>
+              <Pressable
+                style={[styles.chip, draftFilters.utilities_included && styles.chipSelected, {
+                  backgroundColor: draftFilters.utilities_included ? '#1570ef' : colors.surface,
+                  borderColor: draftFilters.utilities_included ? '#1570ef' : colors.border,
+                  shadowColor: draftFilters.utilities_included ? '#1570ef' : colors.shadow,
+                }]}
+                onPress={() => setDraftFilters(f => ({ ...f, utilities_included: !f.utilities_included }))}
+                android_ripple={{ color: '#1570ef30', borderless: false }}
+              >
+                <Text style={[styles.chipText, draftFilters.utilities_included && styles.chipTextSelected, {
+                  color: draftFilters.utilities_included ? '#FFFFFF' : colors.text,
+                  fontWeight: draftFilters.utilities_included ? '700' : '500',
+                  fontSize: draftFilters.utilities_included ? 15 : 14,
+                }]}>
                   {t('utilitiesIncluded')}
                 </Text>
               </Pressable>
-              <Pressable style={[styles.chip, draftFilters.broker_fee_required === false && styles.chipSelected]} onPress={() => setDraftFilters(f => ({ ...f, broker_fee_required: f.broker_fee_required === false ? undefined : false }))}>
-                <Text style={[styles.chipText, draftFilters.broker_fee_required === false && styles.chipTextSelected]}>
+              <Pressable
+                style={[styles.chip, draftFilters.broker_fee_required === false && styles.chipSelected, {
+                  backgroundColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.surface,
+                  borderColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.border,
+                  shadowColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.shadow,
+                }]}
+                onPress={() => setDraftFilters(f => ({ ...f, broker_fee_required: f.broker_fee_required === false ? undefined : false }))}
+                android_ripple={{ color: '#1570ef30', borderless: false }}
+              >
+                <Text style={[styles.chipText, draftFilters.broker_fee_required === false && styles.chipTextSelected, {
+                  color: draftFilters.broker_fee_required === false ? '#FFFFFF' : colors.text,
+                  fontWeight: draftFilters.broker_fee_required === false ? '700' : '500',
+                  fontSize: draftFilters.broker_fee_required === false ? 15 : 14,
+                }]}>
                   {t('noBrokerFee')}
                 </Text>
               </Pressable>
@@ -388,7 +525,10 @@ export default function FeedScreen() {
 
 
 
-          <Pressable style={[styles.applyButton, { backgroundColor: colors.primary }]} onPress={handleApplyFilters}>
+          <Pressable style={[styles.applyButton, {
+            backgroundColor: colors.primary,
+            shadowColor: colors.primary,
+          }]} onPress={handleApplyFilters}>
             <Ionicons name="checkmark" size={18} color="white" />
             <Text style={styles.applyButtonText}>{t('applyFilters')}</Text>
           </Pressable>
@@ -403,7 +543,14 @@ export default function FeedScreen() {
         onRequestClose={() => setLanguageModalVisible(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setLanguageModalVisible(false)} />
-        <View style={[styles.languageModal, { backgroundColor: colors.surface }]}>
+        <View style={[styles.languageModal, {
+          backgroundColor: colors.surface,
+          shadowColor: colors.shadow,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.2,
+          shadowRadius: 16,
+          elevation: 16,
+        }]}>
           <Text style={[styles.languageModalTitle, { color: colors.text }]}>
             {t('selectLanguage')}
           </Text>
@@ -482,8 +629,6 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between', // Distribute items with space between them
-      // gap: 8, // Removed to ensure proper spacing with justifyContent: 'space-between'
-      // flex: 1, // Removed to allow content to dictate width, while children manage their own flex
     },
     leftSection: {
       flexDirection: 'row',
@@ -527,21 +672,68 @@ const styles = StyleSheet.create({
     activeFilterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      marginRight: 6,
-      gap: 3,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 24,
+      marginRight: 10,
+      gap: 8,
+      // Enhanced iOS-style shadows
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 4,
+      // Subtle border for definition
+      borderWidth: 0.5,
+      // Make it feel premium
+      minHeight: 36,
+      justifyContent: 'center',
     },
     activeFilterText: {
-      fontSize: 11,
-      fontWeight: '500',
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.25,
+      // Add subtle text shadow for iOS
+      textShadowColor: 'rgba(0, 0, 0, 0.2)',
+      textShadowOffset: { width: 0, height: 0.5 },
+      textShadowRadius: 1,
     },
     removeFilterButton: {
-      padding: 2,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: 4,
+      // Enhanced button styling
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      elevation: 2,
     },
-    modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-    modalContent: { backgroundColor: 'white', padding: 16, borderTopLeftRadius: 20, borderTopRightRadius: 20, position: 'absolute', bottom: 0, left: 0, right: 0 },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      // Add subtle blur effect for iOS
+      backdropFilter: 'blur(8px)',
+    },
+    modalContent: {
+      padding: 16,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      // iOS-style modal shadows
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 16,
+      // Theme-aware styling
+      borderWidth: 0.5,
+      borderTopWidth: 0,
+      borderColor: 'rgba(0,0,0,0.1)',
+    },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
     modalTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     modalTitle: { fontSize: 24, fontWeight: 'bold' },
@@ -551,14 +743,74 @@ const styles = StyleSheet.create({
     filterSectionTitle: { fontSize: 16, fontWeight: '600' },
     priceInputContainer: { flexDirection: 'row', gap: 12 },
     inputContainer: { marginBottom: 16 },
-    input: { flex: 1, backgroundColor: '#F3F4F6', padding: 16, borderRadius: 12, fontSize: 16 },
+    input: {
+      flex: 1,
+      padding: 16,
+      borderRadius: 12,
+      fontSize: 16,
+      // Theme-aware styling
+      borderWidth: 1,
+      borderColor: 'rgba(0,0,0,0.1)',
+      // Enhanced visual appeal
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    },
     chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    chip: { backgroundColor: '#F3F4F6', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18 },
-    chipSelected: { backgroundColor: '#00A896' },
-    chipText: { fontSize: 13, color: '#374151' },
-    chipTextSelected: { color: 'white', fontWeight: '600' },
-    applyButton: { backgroundColor: '#00A896', paddingVertical: 16, paddingHorizontal: 24, borderRadius: 12, alignItems: 'center', marginTop: 24, flexDirection: 'row', gap: 8 },
-    applyButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+    chip: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 24,
+      borderWidth: 1,
+      // Modern styling
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+      // Smooth transitions
+      transform: [{ scale: 1 }],
+    },
+    chipSelected: {
+      // Enhanced selected state with consistent blue styling
+      borderColor: '#1570ef',
+      borderWidth: 2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    chipText: {
+      fontSize: 14,
+      fontWeight: '500',
+      letterSpacing: 0.1,
+    },
+    chipTextSelected: {
+      color: 'white',
+      fontWeight: '600',
+      letterSpacing: 0.2,
+    },
+    applyButton: {
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 16,
+      alignItems: 'center',
+      marginTop: 24,
+      flexDirection: 'row',
+      gap: 8,
+      // Modern button styling
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 8,
+      borderWidth: 0,
+    },
+    applyButtonText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
     languageSelector: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -581,11 +833,16 @@ const styles = StyleSheet.create({
       textAlign: 'left',
     },
     languageModal: {
-      backgroundColor: 'white',
       margin: 20,
-      borderRadius: 20,
+      borderRadius: 24,
       padding: 20,
       maxHeight: '70%',
+      // iOS-style modal appearance
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 12,
+      // Theme-aware colors will be applied inline
     },
     languageModalTitle: {
       fontSize: 20,
@@ -623,5 +880,44 @@ const styles = StyleSheet.create({
       color: 'white',
       fontSize: 16,
       fontWeight: '600',
+    },
+    appliedFiltersSummary: {
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E5E7EB',
+      marginHorizontal: 0,
+    },
+    summaryHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    summaryTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+    filterIndicators: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+    },
+    filterIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    bulletPoint: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      // Color will be set inline based on theme
+    },
+    filterIndicatorText: {
+      fontSize: 14,
+      fontWeight: '500',
+      letterSpacing: 0.25,
     },
 });

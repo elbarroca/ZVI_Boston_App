@@ -16,6 +16,7 @@ import TourConfirmationModal from '@/components/TourConfirmationModal';
 import { Image } from 'expo-image';
 import MapView, { Marker } from 'react-native-maps';
 import { TourService } from '@/lib/tourService';
+import * as Linking from 'expo-linking';
 
 type MediaItem = {
     url: string;
@@ -81,7 +82,20 @@ export default function ListingDetailScreen() {
 	}, [user, listing]);
 
 	const handleToggleSave = async () => {
-		if (!user || !listing) { Alert.alert(t('pleaseSignInToSaveListings')); return; }
+		if (!user || !listing) {
+			Alert.alert(
+				t('loginRequired'),
+				t('pleaseSignInToSaveListings'),
+				[
+					{ text: t('cancel'), style: 'cancel' },
+					{
+						text: t('signIn'),
+						onPress: () => router.push('/(auth)')
+					}
+				]
+			);
+			return;
+		}
 		setIsSaveLoading(true);
 		const currentlySaved = isSaved;
 		setIsSaved(!currentlySaved);
@@ -102,11 +116,24 @@ export default function ListingDetailScreen() {
 
 	const handleRequestTour = () => {
 		if (!user) {
-			Alert.alert('Please sign in to request a tour');
+			Alert.alert(
+				t('loginRequired'),
+				t('pleaseSignInToRequestTour'),
+				[
+					{ text: t('cancel'), style: 'cancel' },
+					{
+						text: t('signIn'),
+						onPress: () => router.push('/(auth)')
+					}
+				]
+			);
 			return;
 		}
 		if (hasRequestedTour) {
-			Alert.alert('Tour Already Requested', 'You have already requested a tour for this listing. We\'ll contact you soon with confirmation details.');
+			Alert.alert(
+				t('tourAlreadyRequested'),
+				t('tourRequestPendingMessage')
+			);
 			return;
 		}
 		setShowTourModal(true);
@@ -131,8 +158,20 @@ export default function ListingDetailScreen() {
 	const handleShare = async () => {
 		if (!listing) return;
 		try {
-			await Share.share({ message: `Check out this listing: ${listing.title}` });
+			// Generate a deep link URL for the listing
+			const listingUrl = Linking.createURL(`/listings/${listing.id}`, {
+				scheme: 'zentro'
+			});
+
+			// Create a comprehensive share message
+			const shareMessage = `🏠 Check out this amazing listing!\n\n📍 ${listing.title}\n💰 $${listing.price_per_month.toLocaleString()}/month\n🛏️ ${listing.bedrooms} bed${listing.bedrooms !== 1 ? 's' : ''}, ${listing.bathrooms} bath${listing.bathrooms !== 1 ? 's' : ''}\n📍 ${listing.location_address}\n\n${listingUrl}`;
+
+			await Share.share({
+				message: shareMessage,
+				url: listingUrl, // For platforms that support URL sharing
+			});
 		} catch (error) {
+			console.error('Share error:', error);
 			Alert.alert(t('error'), 'Could not share listing.');
 		}
 	};

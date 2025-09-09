@@ -1,6 +1,6 @@
 // components/ListingCard.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, I18nManager } from 'react-native';
+import { View, Text, StyleSheet, Pressable, I18nManager, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,8 +69,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   const toggleSave = async () => {
     if (!session?.user) {
-      // For now, just return if user is not logged in
-      // You could show a login prompt here
+      // Show login prompt if user is not logged in
+      Alert.alert(
+        t('loginRequired'),
+        t('loginToSaveListings'),
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('login'), onPress: () => router.push('/(auth)') }
+        ]
+      );
       return;
     }
 
@@ -89,10 +96,27 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       // Invalidate and refetch both saved listings and main listings to update all views immediately
       await queryClient.invalidateQueries({ queryKey: ['saved-listings'] });
       await queryClient.invalidateQueries({ queryKey: ['listings'] });
-    } catch (error) {
+    } catch (error: any) {
       // Revert on error
       setIsSaved(currentlySaved);
-      console.error("Error toggling save:", error);
+
+      // Check if it's a duplicate key error
+      if (error.message && error.message.includes('duplicate key value violates unique constraint')) {
+        Alert.alert(
+          t('alreadySaved'),
+          t('listingAlreadyInSaved'),
+          [{ text: t('ok'), style: 'default' }]
+        );
+      } else {
+        // Generic error message for other errors
+        Alert.alert(
+          t('error'),
+          t('unableToSaveListing'),
+          [{ text: t('ok'), style: 'default' }]
+        );
+      }
+
+      console.error("Error toggling save:", error.message || error);
     }
   };
 
@@ -130,14 +154,14 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
     setIsPreloading(true);
     try {
-      if (__DEV__) console.log(`ListingCard: Preloading images for listing ${listing.id}`);
+      if (__DEV__) console.log('ListingCard: Preloading images for listing', listing.id);
 
       // Preload all detail images with high priority for instant loading
       await imageCache.preloadListingImages(listing.id, listing.image_urls);
 
-      if (__DEV__) console.log(`ListingCard: Successfully preloaded ${listing.image_urls.length} images for listing ${listing.id}`);
+      if (__DEV__) console.log('ListingCard: Successfully preloaded', listing.image_urls.length, 'images for listing', listing.id);
     } catch (error) {
-      if (__DEV__) console.warn(`ListingCard: Failed to preload images for listing ${listing.id}:`, error);
+      if (__DEV__) console.warn('ListingCard: Failed to preload images for listing', listing.id, ':', error);
     } finally {
       setIsPreloading(false);
     }
@@ -152,7 +176,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <Pressable
         onPressIn={preloadDetailImages} // Start preloading immediately on press
         onPress={() => {
-          if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
+          if (__DEV__) {
+            const slug = createListingUrl(listing.title, listing.id);
+            console.log('ListingCard: Navigating to detail page for listing', listing.id, 'with slug', slug);
+          }
           router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
         }}
       >
@@ -172,7 +199,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           <Pressable
             style={{ flex: 1 }}
             onPress={() => {
-              if (__DEV__) console.log(`ListingCard: Navigating to detail page for listing ${listing.id} with slug ${createListingUrl(listing.title, listing.id)}`);
+              if (__DEV__) {
+                const slug = createListingUrl(listing.title, listing.id);
+                console.log('ListingCard: Navigating to detail page for listing', listing.id, 'with slug', slug);
+              }
               router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
             }}
           >

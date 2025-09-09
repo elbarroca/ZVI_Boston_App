@@ -22,6 +22,9 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
   const { t } = useLanguage();
   const colors = themeColors[theme];
 
+  // Debug logging
+  console.log('TourRequestSummaryModal render - isVisible:', isVisible, 'tourDetails:', tourDetails);
+
   // Group time slots by date for better organization and determine date priorities
   const groupedSlotsByDate: { [date: string]: { time: string; priority: number }[] } = {};
   const datePriorities: { date: string; minPriority: number }[] = [];
@@ -71,7 +74,7 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={isVisible}
       onRequestClose={onClose}
@@ -189,6 +192,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     width: '100%',
     maxHeight: '85%', // Adjusted for summary to take less space than main modal
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   modalHeader: {
     flexDirection: 'row',

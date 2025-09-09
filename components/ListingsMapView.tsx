@@ -105,12 +105,13 @@ function BostonAreaMap({ listings, router }: { listings: any[], router: any }) {
           .map(listing => (
             <Marker
               key={listing.id}
-              coordinate={{ 
-                latitude: parseFloat(listing.latitude), 
-                longitude: parseFloat(listing.longitude) 
+              coordinate={{
+                latitude: parseFloat(listing.latitude),
+                longitude: parseFloat(listing.longitude)
               }}
               title={listing.title}
               description={`$${listing.price_per_month}/month`}
+              onPress={() => router.push(`/(tabs)/listings/${listing.id}`)}
               onCalloutPress={() => router.push(`/(tabs)/listings/${listing.id}`)}
             >
               <View style={styles.listingMarker}>

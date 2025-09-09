@@ -128,6 +128,9 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [phoneValidationError, setPhoneValidationError] = useState<string | null>(null);
 
+  // Debug logging
+  console.log('TourConfirmationModal render - isVisible:', isVisible, 'isSummaryModalVisible:', isSummaryModalVisible);
+
   // Time slots will be generated dynamically based on selected period
 
   const countryCodes = [
@@ -349,15 +352,17 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
       }, session.user.id);
 
       // Successfully submitted - show summary modal
+      console.log('Tour request submitted successfully, showing summary modal');
+      console.log('Setting isSummaryModalVisible to true');
       setIsSummaryModalVisible(true);
+      console.log('isSummaryModalVisible should now be true');
 
-      // Call success callback to update parent state
-      if (onSuccess) {
-        onSuccess();
-      }
+      // Don't call success callback immediately - let user see the summary first
+      // The success callback will be called when they close the summary modal
     } catch (error: unknown) {
-      console.error('Error submitting tour request:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      const err = error as Error;
+      console.error('Error submitting tour request:', err.message || err);
+      const errorMessage = err.message || 'An unknown error occurred';
       Alert.alert(t('couldNotSubmitTourRequest'), errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -385,28 +390,30 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
         }}
       />
       <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-        <View style={styles.modalHeader}>
-          <Pressable
-            onPress={() => {
-              resetModalState();
-              onClose();
-            }}
-            style={styles.backButton}
-            android_ripple={{ color: colors.primary + '20', borderless: true }}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </Pressable>
-          <View style={styles.modalTitleContainer}>
-            <Ionicons name="calendar-outline" size={24} color={colors.primary} />
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectTourDateTime')}</Text>
-          </View>
-          <Pressable onPress={() => {
-            resetModalState();
-            onClose();
-          }}>
-            <Ionicons name="close" size={24} color={colors.textSecondary} />
-          </Pressable>
-        </View>
+        {!isSummaryModalVisible && (
+          <>
+            <View style={styles.modalHeader}>
+              <Pressable
+                onPress={() => {
+                  resetModalState();
+                  onClose();
+                }}
+                style={styles.backButton}
+                android_ripple={{ color: colors.primary + '20', borderless: true }}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.primary} />
+              </Pressable>
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{t('selectTourDateTime')}</Text>
+              </View>
+              <Pressable onPress={() => {
+                resetModalState();
+                onClose();
+              }}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
         
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* STEP 1: Select Dates */}
@@ -684,21 +691,23 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
               onChangeText={setNotes}
             />
           </View>
-        </ScrollView>
-        
-        <Pressable
-          style={[styles.submitButton, { backgroundColor: isSubmitting ? colors.textMuted : colors.primary }]}
-          onPress={handleSubmitTourRequest}
-          disabled={isSubmitting}
-          android_ripple={{
-            color: 'rgba(255,255,255,0.3)',
-            borderless: false
-          }}
-        >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? t('submitting') : t('submitRequest')}
-          </Text>
-        </Pressable>
+            </ScrollView>
+            
+            <Pressable
+              style={[styles.submitButton, { backgroundColor: isSubmitting ? colors.textMuted : colors.primary }]}
+              onPress={handleSubmitTourRequest}
+              disabled={isSubmitting}
+              android_ripple={{
+                color: 'rgba(255,255,255,0.3)',
+                borderless: false
+              }}
+            >
+              <Text style={styles.submitButtonText}>
+                {isSubmitting ? t('submitting') : t('submitRequest')}
+              </Text>
+            </Pressable>
+          </>
+        )}
 
         <Modal
           animationType="slide"
@@ -732,24 +741,125 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
           </View>
         </Modal>
 
-        <TourRequestSummaryModal
-          isVisible={isSummaryModalVisible}
-          onClose={() => {
-            resetModalState();
-            onClose();
-          }}
-          tourDetails={{
-            dates: Object.keys(selectedDates).filter((date: string) => selectedDates[date].selected),
-            timeSlots: selectedDaySlots.map((slot: {date: string, time: string, priority: number}) => ({
-              time: slot.time,
-              priority: slot.priority,
-              date: slot.date // Include date information
-            })),
-            notes,
-            phoneNumber,
-            countryCode: selectedCountryCode,
-          }}
-        />
+        {isSummaryModalVisible && (
+          <View style={styles.summaryContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Tour Request Confirmed!</Text>
+              </View>
+              <Pressable onPress={() => {
+                setIsSummaryModalVisible(false);
+                resetModalState();
+                // Call success callback to update parent state
+                if (onSuccess) {
+                  onSuccess();
+                }
+                onClose();
+              }}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[styles.confirmationMessage, { color: colors.textSecondary }]}>
+                🎉 Your tour request has been successfully submitted! We'll contact you soon to confirm the best available time.
+              </Text>
+
+              <View style={[styles.summaryCard, { backgroundColor: colors.background }]}>
+                <Text style={[styles.summaryTitle, { color: colors.text }]}>📅 Your Selected Schedule</Text>
+
+                {selectedDaySlots
+                  .reduce((dates: string[], slot) => {
+                    if (!dates.includes(slot.date)) dates.push(slot.date);
+                    return dates;
+                  }, [])
+                  .sort()
+                  .map(date => (
+                    <View key={date} style={[styles.dateBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <View style={styles.dateHeader}>
+                        <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+                        <Text style={[styles.dateText, { color: colors.text }]}>
+                          {new Date(date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </Text>
+                      </View>
+
+                      <View style={styles.timeSlotsContainer}>
+                        <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Preferred Times:</Text>
+                        <View style={styles.timeSlotsList}>
+                          {selectedDaySlots
+                            .filter(slot => slot.date === date)
+                            .sort((a, b) => a.priority - b.priority)
+                            .map((slot, index) => {
+                              const isTopChoice = slot.priority === 1;
+                              return (
+                                <View key={index} style={[styles.timeSlotItem, {
+                                  backgroundColor: isTopChoice ? '#FEF3C7' : colors.background,
+                                  borderColor: isTopChoice ? '#F59E0B' : colors.border
+                                }]}>
+                                  <View style={styles.priorityIndicator}>
+                                    {isTopChoice && <Ionicons name="star" size={12} color="#F59E0B" />}
+                                    <Text style={[styles.priorityNumber, {
+                                      color: isTopChoice ? '#F59E0B' : colors.textMuted
+                                    }]}>
+                                      {slot.priority}
+                                    </Text>
+                                  </View>
+                                  <Text style={[styles.timeSlotText, {
+                                    color: isTopChoice ? colors.text : colors.textSecondary,
+                                    fontWeight: isTopChoice ? '600' : '400'
+                                  }]}>
+                                    {slot.time}
+                                  </Text>
+                                </View>
+                              );
+                            })}
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+
+                {notes.length > 0 && (
+                  <View style={styles.summaryBlock}>
+                    <Text style={[styles.summaryLabel, { color: colors.text }]}>📝 {t('yourNotes') || 'Your Notes'}:</Text>
+                    <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{notes}</Text>
+                  </View>
+                )}
+
+                {phoneNumber.length > 0 && (
+                  <View style={styles.summaryBlock}>
+                    <Text style={[styles.summaryLabel, { color: colors.text }]}>📞 {t('phoneNumber') || 'Phone Number'}:</Text>
+                    <Text style={[styles.summaryText, { color: colors.textSecondary }]}>{selectedCountryCode} {phoneNumber}</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.infoCard}>
+                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                  We'll review your preferences and contact you within 24 hours to confirm the best available time slot.
+                </Text>
+              </View>
+            </ScrollView>
+
+            <Pressable style={[styles.okButton, { backgroundColor: colors.primary }]} onPress={() => {
+              setIsSummaryModalVisible(false);
+              resetModalState();
+              // Call success callback to update parent state
+              if (onSuccess) {
+                onSuccess();
+              }
+              onClose();
+            }}>
+              <Text style={styles.okButtonText}>Got it, thanks!</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -1118,5 +1228,112 @@ const styles = StyleSheet.create({
   sectionSeparator: {
     height: 24,
     backgroundColor: 'transparent',
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  confirmationMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  summaryCard: {
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  summaryBlock: {
+    marginBottom: 15,
+  },
+  summaryLabel: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  summaryText: {
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  dateBlock: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  timeSlotsContainer: {
+    gap: 8,
+  },
+  timeLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  timeSlotsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeSlotItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  timeSlotText: {
+    fontSize: 14,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  okButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  okButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

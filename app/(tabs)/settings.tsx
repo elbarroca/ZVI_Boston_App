@@ -714,6 +714,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   topSpacing: {
-    height: 100,
+    height: 0,
   },
 });
