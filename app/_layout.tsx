@@ -34,8 +34,9 @@ const InitialLayout = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Set up deep link listener for OAuth callbacks
+    // Set up deep link listener for OAuth callbacks and listing URLs
     const handleDeepLink = ({ url }: { url: string }) => {
+      console.log('Deep link received:', url);
 
       // Check if this is an OAuth callback
       if (url.includes('auth/callback')) {
@@ -63,6 +64,38 @@ const InitialLayout = () => {
           router.replace('/auth/callback');
         }
       }
+      // Handle listing deep links
+      else if (url.includes('/listings/')) {
+        try {
+          const parsedUrl = Linking.parse(url);
+          const pathSegments = parsedUrl.path?.split('/') || [];
+          const listingsIndex = pathSegments.indexOf('listings');
+          
+          if (listingsIndex !== -1 && listingsIndex + 1 < pathSegments.length) {
+            const listingSlugOrId = pathSegments[listingsIndex + 1];
+            console.log('Navigating to listing:', listingSlugOrId);
+            
+            // Navigate to the listing, ensuring user is authenticated first
+            if (session) {
+              router.push(`/(tabs)/listings/${listingSlugOrId}`);
+            } else {
+              // Store the intended destination and redirect to auth first
+              router.replace({
+                pathname: '/(auth)',
+                params: { redirect: `/(tabs)/listings/${listingSlugOrId}` }
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing listing deep link:', error);
+          // Fallback to main app
+          if (session) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/(auth)');
+          }
+        }
+      }
     };
 
     // Add deep link listener
@@ -70,26 +103,53 @@ const InitialLayout = () => {
 
     // Check initial URL when app starts
     Linking.getInitialURL().then((url) => {
-      if (url && url.includes('auth/callback')) {
-        try {
-          const parsedUrl = Linking.parse(url);
+      if (url) {
+        console.log('Initial URL:', url);
+        
+        if (url.includes('auth/callback')) {
+          try {
+            const parsedUrl = Linking.parse(url);
 
-          if (parsedUrl.queryParams?.code) {
-            router.replace({
-              pathname: '/auth/callback',
-              params: { code: parsedUrl.queryParams.code }
-            });
-          } else if (parsedUrl.queryParams?.access_token) {
-            router.replace({
-              pathname: '/auth/callback',
-              params: parsedUrl.queryParams
-            });
-          } else {
+            if (parsedUrl.queryParams?.code) {
+              router.replace({
+                pathname: '/auth/callback',
+                params: { code: parsedUrl.queryParams.code }
+              });
+            } else if (parsedUrl.queryParams?.access_token) {
+              router.replace({
+                pathname: '/auth/callback',
+                params: parsedUrl.queryParams
+              });
+            } else {
+              router.replace('/auth/callback');
+            }
+          } catch (error) {
+            console.error('Error parsing initial OAuth URL:', error);
             router.replace('/auth/callback');
           }
-        } catch (error) {
-          console.error('Error parsing initial OAuth URL:', error);
-          router.replace('/auth/callback');
+        }
+        // Handle initial listing URLs
+        else if (url.includes('/listings/')) {
+          try {
+            const parsedUrl = Linking.parse(url);
+            const pathSegments = parsedUrl.path?.split('/') || [];
+            const listingsIndex = pathSegments.indexOf('listings');
+            
+            if (listingsIndex !== -1 && listingsIndex + 1 < pathSegments.length) {
+              const listingSlugOrId = pathSegments[listingsIndex + 1];
+              console.log('Initial listing navigation:', listingSlugOrId);
+              
+              // Store the intended destination for after authentication
+              if (session) {
+                router.replace(`/(tabs)/listings/${listingSlugOrId}`);
+              } else {
+                // Will be handled by the auth redirect logic below
+                console.log('User not authenticated, will redirect after login');
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing initial listing URL:', error);
+          }
         }
       }
     }).catch((error) => {

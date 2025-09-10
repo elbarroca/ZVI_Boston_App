@@ -4,7 +4,7 @@
     "slug": "zentro",
     "scheme": "com.zentro.studenthousing",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -19,7 +19,8 @@
       },
       "config": {
         "googleMapsApiKey": "AIzaSyABhlc_Vw3SxPo1lI2SuwoLy_M31gYmgUQ"
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -100,7 +101,8 @@
       ],
       "expo-web-browser",
       "expo-audio",
-      "expo-video"
+      "expo-video",
+      "expo-apple-authentication"
     ],
     "extra": {
       "router": {

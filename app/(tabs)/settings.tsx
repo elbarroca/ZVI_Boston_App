@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image, Alert, ScrollView, Switch, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, Alert, ScrollView, Switch, TouchableOpacity, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { useSupabaseAuth } from '@/context/supabase-provider';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage, LANGUAGES, TranslationKey } from '@/context/language-provider';
 import { Stack, useRouter } from 'expo-router';
+import { deleteUserAccount, checkAccountDeletionEligibility } from '@/lib/api';
 
 // A simple function to get the current user's profile
 const getProfile = async (userId: string) => {
@@ -52,6 +53,10 @@ export default function SettingsScreen() {
   const colors = themeColors[theme];
   const router = useRouter();
   const [showLanguageModal, setShowLanguageModal] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [deletePassword, setDeletePassword] = React.useState('');
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteStep, setDeleteStep] = React.useState<'confirmation' | 'password' | 'processing'>('confirmation');
 
   const { data: profile } = useQuery({
     queryKey: ['profile', session?.user?.id],
@@ -74,6 +79,90 @@ export default function SettingsScreen() {
 
   const handleHelp = () => {
     Alert.alert("Help & Support", "Contact us at support@yourapp.com for assistance.");
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!session?.user?.id) return;
+    
+    setShowDeleteModal(true);
+    setDeleteStep('confirmation');
+  };
+
+  const proceedToPasswordStep = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      const eligibility = await checkAccountDeletionEligibility(session.user.id);
+      
+      if (!eligibility.canDelete) {
+        Alert.alert('Cannot Delete Account', eligibility.warnings.join('\n'));
+        setShowDeleteModal(false);
+        return;
+      }
+
+      // Show warnings if any
+      if (eligibility.warnings.length > 0) {
+        Alert.alert(
+          'Account Deletion Warning',
+          eligibility.warnings.join('\n') + '\n\nAre you sure you want to continue?',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => setShowDeleteModal(false) },
+            { text: 'Continue', style: 'destructive', onPress: () => {
+              // Check if user signed in with email (needs password) or OAuth
+              const isEmailUser = session?.user?.email && !session?.user?.app_metadata?.provider;
+              if (isEmailUser) {
+                setDeleteStep('password');
+              } else {
+                confirmDelete();
+              }
+            }}
+          ]
+        );
+      } else {
+        // Check if user signed in with email (needs password) or OAuth
+        const isEmailUser = session?.user?.email && !session?.user?.app_metadata?.provider;
+        if (isEmailUser) {
+          setDeleteStep('password');
+        } else {
+          confirmDelete();
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Unable to check account status. Please try again.');
+      setShowDeleteModal(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!session?.user?.id) return;
+
+    setIsDeleting(true);
+    setDeleteStep('processing');
+
+    try {
+      // For email users, we need the password. For OAuth users, we don't.
+      const isEmailUser = session?.user?.email && !session?.user?.app_metadata?.provider;
+      const password = isEmailUser ? deletePassword : undefined;
+
+      await deleteUserAccount(session.user.id, password);
+      
+      // Success - user will be signed out automatically by the API
+      Alert.alert(
+        'Account Deleted',
+        'Your account has been successfully deleted. All your data has been removed.',
+        [{ text: 'OK', onPress: () => {
+          setShowDeleteModal(false);
+          setDeletePassword('');
+          setDeleteStep('confirmation');
+          router.replace('/(auth)');
+        }}]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+      setDeleteStep(deletePassword ? 'password' : 'confirmation');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const SettingItem = ({ icon, title, onPress, rightComponent }: {
@@ -184,13 +273,21 @@ export default function SettingsScreen() {
           backgroundColor: colors.surface,
           shadowColor: colors.shadow
         }]}>
-
           <SettingItem
             icon="help-circle-outline"
             title={t('helpSupport')}
             onPress={handleHelp}
             rightComponent={<Ionicons name="chevron-forward" size={20} color={colors.textMuted} />}
           />
+          
+          {session?.user && (
+            <SettingItem
+              icon="trash-outline"
+              title="Delete Account"
+              onPress={handleDeleteAccount}
+              rightComponent={<Ionicons name="chevron-forward" size={20} color={colors.error} />}
+            />
+          )}
         </View>
 
         {/* Tour History */}
@@ -362,6 +459,142 @@ export default function SettingsScreen() {
           >
             <Text style={styles.languageCloseText}>{t('done')}</Text>
           </Pressable>
+        </View>
+      </Modal>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isDeleting) {
+            setShowDeleteModal(false);
+            setDeletePassword('');
+            setDeleteStep('confirmation');
+          }
+        }}
+      >
+        <Pressable 
+          style={styles.modalBackdrop} 
+          onPress={() => {
+            if (!isDeleting) {
+              setShowDeleteModal(false);
+              setDeletePassword('');
+              setDeleteStep('confirmation');
+            }
+          }} 
+        />
+        <View style={[styles.deleteModal, { backgroundColor: colors.surface }]}>
+          {deleteStep === 'confirmation' && (
+            <>
+              <View style={styles.deleteModalHeader}>
+                <Ionicons name="warning" size={48} color={colors.error} />
+                <Text style={[styles.deleteModalTitle, { color: colors.text }]}>
+                  Delete Account
+                </Text>
+                <Text style={[styles.deleteModalSubtitle, { color: colors.textSecondary }]}>
+                  This action cannot be undone. All your data will be permanently deleted.
+                </Text>
+              </View>
+              
+              <View style={styles.deleteModalWarnings}>
+                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                  • All saved listings will be removed
+                </Text>
+                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                  • Tour requests will be cancelled
+                </Text>
+                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                  • Profile information will be deleted
+                </Text>
+                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                  • This action is irreversible
+                </Text>
+              </View>
+
+              <View style={styles.deleteModalButtons}>
+                <Pressable
+                  style={[styles.deleteModalButton, { backgroundColor: colors.border }]}
+                  onPress={() => {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                    setDeleteStep('confirmation');
+                  }}
+                >
+                  <Text style={[styles.deleteModalButtonText, { color: colors.text }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.deleteModalButton, { backgroundColor: colors.error }]}
+                  onPress={proceedToPasswordStep}
+                >
+                  <Text style={[styles.deleteModalButtonText, { color: 'white' }]}>Continue</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {deleteStep === 'password' && (
+            <>
+              <View style={styles.deleteModalHeader}>
+                <Ionicons name="lock-closed" size={48} color={colors.error} />
+                <Text style={[styles.deleteModalTitle, { color: colors.text }]}>
+                  Confirm Password
+                </Text>
+                <Text style={[styles.deleteModalSubtitle, { color: colors.textSecondary }]}>
+                  Please enter your password to confirm account deletion.
+                </Text>
+              </View>
+              
+              <TextInput
+                style={[styles.passwordInput, { 
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.text
+                }]}
+                placeholder="Enter your password"
+                placeholderTextColor={colors.textMuted}
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                secureTextEntry
+                autoFocus
+              />
+
+              <View style={styles.deleteModalButtons}>
+                <Pressable
+                  style={[styles.deleteModalButton, { backgroundColor: colors.border }]}
+                  onPress={() => setDeleteStep('confirmation')}
+                >
+                  <Text style={[styles.deleteModalButtonText, { color: colors.text }]}>Back</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.deleteModalButton, 
+                    { 
+                      backgroundColor: deletePassword.length > 0 ? colors.error : colors.textMuted,
+                      opacity: deletePassword.length > 0 ? 1 : 0.5
+                    }
+                  ]}
+                  onPress={confirmDelete}
+                  disabled={deletePassword.length === 0}
+                >
+                  <Text style={[styles.deleteModalButtonText, { color: 'white' }]}>Delete Account</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          {deleteStep === 'processing' && (
+            <View style={styles.deleteProcessingContainer}>
+              <ActivityIndicator size="large" color={colors.error} />
+              <Text style={[styles.deleteProcessingText, { color: colors.text }]}>
+                Deleting your account...
+              </Text>
+              <Text style={[styles.deleteProcessingSubtext, { color: colors.textSecondary }]}>
+                Please wait while we remove all your data.
+              </Text>
+            </View>
+          )}
         </View>
       </Modal>
 
@@ -715,5 +948,82 @@ const styles = StyleSheet.create({
   },
   topSpacing: {
     height: 0,
+  },
+  deleteModal: {
+    backgroundColor: 'white',
+    margin: 20,
+    borderRadius: 20,
+    padding: 24,
+    maxHeight: '80%',
+    justifyContent: 'center',
+  },
+  deleteModalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  deleteModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  deleteModalSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  deleteModalWarnings: {
+    marginBottom: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  warningText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  deleteModalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  passwordInput: {
+    borderWidth: 2,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    marginBottom: 24,
+  },
+  deleteProcessingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  deleteProcessingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  deleteProcessingSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

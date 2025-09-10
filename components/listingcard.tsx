@@ -1,11 +1,10 @@
 // components/ListingCard.tsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, I18nManager, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/config/supabase';
 import { useSupabaseAuth } from '@/context/supabase-provider';
 import { useTheme } from '@/context/theme-provider';
 import { useLanguage, TranslationKey } from '@/context/language-provider';
@@ -49,7 +48,6 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const colors = themeColors[theme];
-  const { t: translate } = useLanguage();
   const { session } = useSupabaseAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -221,12 +219,12 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </Text>
             <View style={styles.propertyTypeContainer}>
               <Text style={[styles.propertyType, {
-                backgroundColor: colors.primary + '20',
+                backgroundColor: `${colors.primary}20`,
                 color: colors.primary
               }]}>
                 {(() => {
                   if (safePropertyType) {
-                    const translated = t(safePropertyType.toLowerCase() as TranslationKey);
+                    const translated = String(t(safePropertyType.toLowerCase() as TranslationKey));
                     return translated !== safePropertyType.toLowerCase()
                       ? translated
                       : safePropertyType.charAt(0).toUpperCase() + safePropertyType.slice(1).toLowerCase();
@@ -240,19 +238,19 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <View style={styles.detailItem}>
                 <Ionicons name="bed" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {`${safeBedrooms} ${safeBedrooms === 1 ? t('bed') : t('beds')}`}
+                  {`${safeBedrooms} ${safeBedrooms === 1 ? String(t('bed')) : String(t('beds'))}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="water" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {`${safeBathrooms} ${safeBathrooms === 1 ? t('bath') : t('baths')}`}
+                  {`${safeBathrooms} ${safeBathrooms === 1 ? String(t('bath')) : String(t('baths'))}`}
                 </Text>
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="resize" size={16} color={colors.primary} />
                 <Text style={[styles.detailText, { color: colors.text }]}>
-                  {`${safeSquareFeet} ${translate('sqft')}`}
+                  {`${safeSquareFeet} ${String(t('sqft'))}`}
                 </Text>
               </View>
             </View>
@@ -261,16 +259,19 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             <View style={styles.locationContainer}>
               <Ionicons name="location" size={16} color={colors.textSecondary} />
               <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
-                {`${safeNeighborhood}, ${safeAddress}`}
+                {(() => {
+                  const locationParts = [safeNeighborhood, safeAddress].filter(Boolean);
+                  return locationParts.length > 0 ? locationParts.join(', ') : 'Location not specified';
+                })()}
               </Text>
             </View>
 
             {/* University Distance */}
-            {listing.university_proximity_minutes && (
+            {listing.university_proximity_minutes && safeNearestUniversity && (
               <View style={styles.universityContainer}>
                 <Ionicons name="school" size={16} color={colors.primary} />
                 <Text style={[styles.universityText, { color: colors.textSecondary }]}>
-                  {`${listing.university_proximity_minutes} ${translate('minTo')} ${safeNearestUniversity}`}
+                  {`${listing.university_proximity_minutes} ${String(t('minTo'))} ${safeNearestUniversity}`}
                 </Text>
               </View>
             )}
@@ -278,35 +279,35 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Amenities */}
             <View style={styles.amenitiesContainer}>
               {listing.is_furnished && (
-                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.amenityItem, { backgroundColor: `${colors.primary}15` }]}>
                   <Ionicons name="home" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('furnished')}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{String(t('furnished'))}</Text>
                 </View>
               )}
               {listing.utilities_included && (
-                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.amenityItem, { backgroundColor: `${colors.primary}15` }]}>
                   <Ionicons name="flash" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('utilitiesIncluded')}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{String(t('utilitiesIncluded'))}</Text>
                 </View>
               )}
               {listing.pets_allowed && (
-                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.amenityItem, { backgroundColor: `${colors.primary}15` }]}>
                   <Ionicons name="paw" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('pets')}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{String(t('pets'))}</Text>
                 </View>
               )}
               {listing.laundry_type && listing.laundry_type !== 'none' && (
-                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.amenityItem, { backgroundColor: `${colors.primary}15` }]}>
                   <Ionicons name="shirt" size={14} color={colors.primary} />
                   <Text style={[styles.amenityText, { color: colors.primary }]}>
-                    {listing.laundry_type === 'in-unit' ? translate('inUnitLaundry') : translate('laundry')}
+                    {String(listing.laundry_type === 'in-unit' ? t('inUnitLaundry') : t('laundry'))}
                   </Text>
                 </View>
               )}
               {listing.parking_type && listing.parking_type !== 'none' && (
-                <View style={[styles.amenityItem, { backgroundColor: colors.primary + '15' }]}>
+                <View style={[styles.amenityItem, { backgroundColor: `${colors.primary}15` }]}>
                   <Ionicons name="car" size={14} color={colors.primary} />
-                  <Text style={[styles.amenityText, { color: colors.primary }]}>{translate('parking')}</Text>
+                  <Text style={[styles.amenityText, { color: colors.primary }]}>{String(t('parking'))}</Text>
                 </View>
               )}
             </View>
@@ -314,10 +315,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Price */}
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>
-                {`$${safePrice.toLocaleString()}`}
+                {safePrice > 0 ? `$${safePrice.toLocaleString()}` : 'Price not available'}
               </Text>
               <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>
-                {` ${translate('perMonth')}`}
+                {safePrice > 0 ? ` ${String(t('perMonth'))}` : ''}
               </Text>
             </View>
           </Pressable>

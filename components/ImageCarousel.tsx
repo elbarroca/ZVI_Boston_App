@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Text, Pressable } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useOrientation } from '@/hooks/useOrientation';
 
 type MediaItem = {
     url: string;
@@ -16,9 +17,41 @@ type ImageCarouselProps = {
 };
 
 export default function ImageCarousel({ media, onImagePress, height = 300, saveButton }: ImageCarouselProps) {
+  const orientation = useOrientation();
+  
+  // Enhanced dynamic height calculation based on orientation and screen size
+  const getDynamicHeight = () => {
+    if (height !== 300) return height; // Use provided height if it's custom
+    
+    if (orientation.isLandscape) {
+      // In landscape, use more of the available height but respect aspect ratios
+      const maxHeight = Math.min(orientation.height * 0.7, 500);
+      const aspectBasedHeight = orientation.width * 0.4; // 40% of width maintains good ratio
+      return Math.min(maxHeight, aspectBasedHeight);
+    } else {
+      // In portrait, use a reasonable portion of width
+      return Math.min(orientation.width * 0.6, 300);
+    }
+  };
+
+  const dynamicHeight = getDynamicHeight();
+
+  // Add transition styles when orientation is changing
+  const containerStyle = [
+    styles.container, 
+    { 
+      height: dynamicHeight,
+      opacity: orientation.isTransitioning ? 0.9 : 1,
+      // Smooth transition for orientation changes
+      ...(Platform.OS === 'web' && {
+        transition: 'all 0.3s ease-in-out',
+      }),
+    }
+  ];
+
   if (!media || media.length === 0) {
     return (
-      <View style={[styles.placeholderContainer, { height }]}>
+      <View style={[styles.placeholderContainer, { height: dynamicHeight }]}>
         <Ionicons name="image-outline" size={48} color="#9CA3AF" />
         <Text style={styles.placeholderText}>No Media Available</Text>
       </View>
@@ -28,7 +61,7 @@ export default function ImageCarousel({ media, onImagePress, height = 300, saveB
   const firstItem = media[0];
 
   return (
-    <View style={[styles.container, { height }]}>
+    <View style={containerStyle}>
       <Pressable onPress={() => onImagePress(0)} style={styles.imageWrapper}>
         <Image
           source={{ uri: firstItem.url }}

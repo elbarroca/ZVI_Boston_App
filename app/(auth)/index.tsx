@@ -1,26 +1,35 @@
 // app/(auth)/index.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform, ScrollView } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, configureGoogleSignIn } from '@/lib/auth'; // Use new Google Sign-In function
+import { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, configureGoogleSignIn } from '@/lib/auth';
 import GoogleIcon from '@/components/GoogleIcon'; // Import the new GoogleIcon component
 import { EmailAuthButton } from '@/components/ui/EmailAuthButton'; // Import the new EmailAuthButton component
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// Google logo - using local asset for better reliability
-const GOOGLE_ICON_URI = require('../../assets/google-logo.svg');
 
 export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [googleIconError, setGoogleIconError] = useState(false);
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
   const router = useRouter();
 
-  // Configure Google Sign-In when component mounts
+  // Configure authentication providers when component mounts
   React.useEffect(() => {
     configureGoogleSignIn();
+    
+    // Check if Apple authentication is available (iOS only)
+    const checkAppleAuth = async () => {
+      if (Platform.OS === 'ios') {
+        const isAvailable = await AppleAuthentication.isAvailableAsync();
+        setIsAppleAuthAvailable(isAvailable);
+      }
+    };
+    
+    checkAppleAuth();
   }, []);
 
   const handleEmailAuth = async () => {
@@ -68,14 +77,28 @@ export default function AuthScreen() {
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {!googleIconError ? (
-              <GoogleIcon width={Platform.OS === 'web' ? 22 : 20} height={Platform.OS === 'web' ? 22 : 20} />
-            ) : (
-              <Text style={[styles.icon, styles.fallbackIcon]}>G</Text>
-            )}
+            <GoogleIcon width={Platform.OS === 'web' ? 22 : 20} height={Platform.OS === 'web' ? 22 : 20} />
             <Text style={styles.googleButtonText}>Continue with Google</Text>
           </View>
         </Pressable>
+
+        {/* Apple Sign-In Button - Only show on iOS if available */}
+        {isAppleAuthAvailable && (
+          <Pressable
+            style={({ pressed, hovered }) => [
+              styles.button,
+              styles.appleButton,
+              (hovered) && styles.appleButtonHovered,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={signInWithApple}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="logo-apple" size={Platform.OS === 'web' ? 22 : 20} color="#000000" />
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </View>
+          </Pressable>
+        )}
 
         <Text style={styles.orText}>or</Text>
 
@@ -241,6 +264,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 12,
     // Ensure the text is vertically centered with the icon
+    lineHeight: Platform.OS === 'web' ? 22 : 20,
+  },
+  appleButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    marginTop: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  appleButtonHovered: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#CBD5E1',
+    shadowOpacity: 0.15
+  },
+  appleButtonText: {
+    color: '#374151',
+    fontSize: Platform.OS === 'web' ? 17 : 16,
+    fontWeight: '600',
+    marginLeft: 12,
     lineHeight: Platform.OS === 'web' ? 22 : 20,
   },
   icon: {

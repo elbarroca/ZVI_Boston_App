@@ -1,6 +1,7 @@
 // lib/auth.ts
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '@/config/supabase';
 import { Alert, Linking } from 'react-native';
 import { Platform } from 'react-native';
@@ -93,6 +94,62 @@ export const signInWithGoogle = async () => {
       Alert.alert('Sign-In Error', error.message || 'An unexpected error occurred. Please try again.');
     }
     return null;
+  }
+};
+
+// Apple Sign-In function
+export const signInWithApple = async () => {
+  try {
+    // Check if Apple authentication is available
+    const isAvailable = await AppleAuthentication.isAvailableAsync();
+    if (!isAvailable) {
+      throw new Error('Apple authentication is not available on this device');
+    }
+
+    // Request Apple authentication
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    // Sign in with Supabase using the Apple token
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: credential.identityToken!,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    // If we have user data from Apple but no email in Supabase, update the profile
+    if (credential.email && data.user && !data.user.email) {
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: credential.email,
+        data: {
+          full_name: credential.fullName ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : null,
+        }
+      });
+
+      if (updateError) {
+        console.warn('Error updating user profile with Apple data:', updateError);
+      }
+    }
+
+    // Navigate to main app on successful authentication
+    router.replace('/(tabs)');
+    
+    return { success: true, user: data.user, session: data.session };
+  } catch (error: any) {
+    if (error.code === 'ERR_REQUEST_CANCELED') {
+      // User cancelled the Apple Sign-In flow
+      return null;
+    } else {
+      Alert.alert('Apple Sign-In Error', error.message || 'An unexpected error occurred. Please try again.');
+      return null;
+    }
   }
 };
 

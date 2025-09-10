@@ -158,21 +158,62 @@ export default function ListingDetailScreen() {
 	const handleShare = async () => {
 		if (!listing) return;
 		try {
-			// Generate a deep link URL for the listing
-			const listingUrl = Linking.createURL(`/listings/${listing.id}`, {
+			// Create a URL-friendly slug from the listing title
+			const createListingSlug = (title: string, id: string) => {
+				const slug = title
+					.toLowerCase()
+					.trim()
+					.replace(/[^\w\s-]/g, '') // Remove special characters
+					.replace(/\s+/g, '-') // Replace spaces with hyphens
+					.replace(/-+/g, '-') // Replace multiple hyphens with single
+					.replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+				return slug.length > 3 ? slug : id;
+			};
+
+			const listingSlug = createListingSlug(listing.title, listing.id);
+			
+			// Generate multiple URL formats for better compatibility
+			const deepLink = Linking.createURL(`/listings/${listingSlug}`, {
 				scheme: 'zentro'
 			});
-
-			// Create a comprehensive share message
-			const shareMessage = `🏠 Check out this amazing listing!\n\n📍 ${listing.title}\n💰 $${listing.price_per_month.toLocaleString()}/month\n🛏️ ${listing.bedrooms} bed${listing.bedrooms !== 1 ? 's' : ''}, ${listing.bathrooms} bath${listing.bathrooms !== 1 ? 's' : ''}\n📍 ${listing.location_address}\n\n${listingUrl}`;
-
-			await Share.share({
-				message: shareMessage,
-				url: listingUrl, // For platforms that support URL sharing
+			
+			// Alternative deep link with package scheme
+			const packageDeepLink = Linking.createURL(`/listings/${listingSlug}`, {
+				scheme: 'com.zentro.studenthousing'
 			});
+
+			// Web fallback URL (if you have a web app)
+			const webUrl = `https://zentro.app/listings/${listingSlug}`;
+
+			// Create a comprehensive share message with better formatting
+			const shareMessage = `🏠 Check out this amazing listing!
+
+📍 ${listing.title}
+💰 $${listing.price_per_month.toLocaleString()}/month
+🛏️ ${listing.bedrooms} bed${listing.bedrooms !== 1 ? 's' : ''}, ${listing.bathrooms} bath${listing.bathrooms !== 1 ? 's' : ''}
+📍 ${listing.location_address}
+
+View in app: ${deepLink}
+Web link: ${webUrl}`;
+
+			// Share with multiple options for better platform support
+			const shareOptions = {
+				message: shareMessage,
+				url: Platform.OS === 'ios' ? webUrl : deepLink, // iOS prefers URLs, Android prefers deep links
+				title: `${listing.title} - Zentro`,
+			};
+
+			const result = await Share.share(shareOptions);
+			
+			// Log share success for debugging
+			if (result.action === Share.sharedAction) {
+				console.log('Share successful:', result);
+			} else if (result.action === Share.dismissedAction) {
+				console.log('Share dismissed');
+			}
 		} catch (error) {
 			console.error('Share error:', error);
-			Alert.alert(t('error'), 'Could not share listing.');
+			Alert.alert(t('error'), 'Could not share listing. Please try again.');
 		}
 	};
 
@@ -224,7 +265,7 @@ export default function ListingDetailScreen() {
 						<Pressable
 							onPress={() => router.back()}
 							style={styles.backButton}
-							android_ripple={{ color: colors.primary + '20', borderless: true }}
+							android_ripple={{ color: `${colors.primary}20`, borderless: true }}
 						>
 							<Ionicons name="arrow-back" size={24} color={colors.text} />
 						</Pressable>
@@ -351,7 +392,14 @@ export default function ListingDetailScreen() {
 				listingId={listing.id}
 			/>
 
-			<Modal visible={showImageModal} transparent={false} animationType="fade" onRequestClose={() => setShowImageModal(false)}>
+			<Modal 
+				visible={showImageModal} 
+				transparent={false} 
+				animationType="fade" 
+				onRequestClose={() => setShowImageModal(false)}
+				supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+				presentationStyle="fullScreen"
+			>
 				<ImageGalleryModal
 					visible={showImageModal}
 					media={media}

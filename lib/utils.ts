@@ -623,15 +623,26 @@ export function createListingUrl(title: string, id: string): string {
 // Validate image URL to prevent console errors
 export function validateImageUrl(url: string | undefined | null): string {
   if (!url || typeof url !== 'string') {
-    return 'https://placehold.co/600x400';
+    return 'https://picsum.photos/600/400?random=1';
   }
 
   // Check for blob URLs and other unsupported schemes
   if (url.startsWith('blob:') || url.startsWith('data:') || !url.startsWith('http')) {
     if (__DEV__) {
-      console.warn('ImageCache: Skipping unsupported URL scheme:', url);
+      // Only log the warning once per session to reduce spam
+      const warningKey = `warned_${url.substring(0, 10)}`;
+      if (!(global as any)[warningKey]) {
+        console.warn('ImageCache: Skipping unsupported URL scheme:', url);
+        (global as any)[warningKey] = true;
+      }
     }
-    return 'https://placehold.co/600x400';
+    return 'https://picsum.photos/600/400?random=2';
+  }
+
+  // Check if it's the problematic placeholder URL
+  if (url.includes('placehold.co')) {
+    // Replace with a working alternative
+    return 'https://picsum.photos/600/400?random=3';
   }
 
   // Basic URL validation
@@ -642,6 +653,6 @@ export function validateImageUrl(url: string | undefined | null): string {
     if (__DEV__) {
       console.warn('ImageCache: Invalid URL format:', url);
     }
-    return 'https://placehold.co/600x400';
+    return 'https://picsum.photos/600/400?random=4';
   }
 }

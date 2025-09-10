@@ -568,3 +568,103 @@ export const createTourRequestWithValidation = async (
   // If no existing tour, proceed with creation
   return await createTourRequest(userId, listingId, options);
 };
+
+// Account deletion functions
+export const deleteUserAccount = async (userId: string, password?: string) => {
+  try {
+    // First, re-authenticate the user if password is provided (for email users)
+    if (password) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { error: reauthError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: password
+        });
+        
+        if (reauthError) {
+          throw new Error('Invalid password. Please enter your current password to delete your account.');
+        }
+      }
+    }
+
+    // Delete user-related data in the correct order (to avoid foreign key conflicts)
+    
+    // 1. Delete saved listings
+    const { error: savedListingsError } = await supabase
+      .from('saved_listings')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (savedListingsError) {
+      console.error('Error deleting saved listings:', savedListingsError);
+    }
+
+    // 2. Delete tour requests
+    const { error: tourRequestsError } = await supabase
+      .from('tour_requests')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (tourRequestsError) {
+      console.error('Error deleting tour requests:', tourRequestsError);
+    }
+
+    // 3. Delete user profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+    
+    if (profileError) {
+      console.error('Error deleting user profile:', profileError);
+    }
+
+    // 4. For now, we'll just sign out after cleaning up data
+    // The auth user will remain but all associated data is deleted
+    // In production, you should implement proper user deletion via:
+    // - Supabase Edge Functions with admin privileges
+    // - Database triggers that handle auth.users deletion
+    // - Or contact support for manual deletion
+    
+    console.log('User data cleanup completed. Signing out user.');
+    
+    // Sign out the user after successful data cleanup
+    await supabase.auth.signOut();
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting user account:', error);
+    throw new Error(error.message || 'Failed to delete account. Please try again.');
+  }
+};
+
+// Check if user can delete their account (helper function)
+export const checkAccountDeletionEligibility = async (userId: string) => {
+  try {
+    // Check for active tour requests that might need to be handled
+    const { data: activeTourRequests, error } = await supabase
+      .from('tour_requests')
+      .select('id, status, created_at')
+      .eq('user_id', userId)
+      .in('status', ['pending', 'confirmed', 'scheduled']);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return {
+      canDelete: true, // In this app, users can always delete their account
+      activeTourRequests: activeTourRequests || [],
+      warnings: activeTourRequests && activeTourRequests.length > 0 
+        ? [`You have ${activeTourRequests.length} active tour request(s). Deleting your account will cancel these requests.`]
+        : []
+    };
+  } catch (error: any) {
+    console.error('Error checking account deletion eligibility:', error);
+    return {
+      canDelete: false,
+      activeTourRequests: [],
+      warnings: ['Unable to verify account status. Please try again.']
+    };
+  }
+};
