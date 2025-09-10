@@ -97,7 +97,7 @@ export default function TabsLayout() {
         name="listings/[id]"
         options={{
           href: null, // Hide this screen from the tab bar on both platforms
-          headerShown: false
+          headerShown: true
         }}
       />
     </Tabs>

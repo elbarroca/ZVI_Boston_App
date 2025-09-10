@@ -196,8 +196,29 @@ export default function ListingDetailScreen() {
 		<>
 			<Stack.Screen
 				options={{
-					title: '',
-					headerTransparent: true,
+					title: t('property'),
+					headerShown: true,
+					headerTransparent: false,
+					headerStyle: {
+						backgroundColor: colors.background,
+						// iOS-specific styling for notch/dynamic island
+						...(Platform.OS === 'ios' && {
+							shadowColor: 'transparent',
+							elevation: 0,
+							borderBottomWidth: 1,
+							borderBottomColor: colors.border,
+						}),
+					},
+					headerTitleStyle: {
+						fontSize: 18,
+						fontWeight: 'bold' as const,
+						color: colors.text,
+						// iOS-specific spacing to account for notch/dynamic island
+						...(Platform.OS === 'ios' && {
+							paddingTop: 4,
+							paddingBottom: 2,
+						}),
+					},
 					headerTintColor: colors.text,
 					headerLeft: () => (
 						<Pressable
@@ -304,7 +325,9 @@ export default function ListingDetailScreen() {
 				</View>
 
 				{/* Save Button - Absolutely positioned over carousel */}
-				<View style={styles.saveButtonContainer}>
+				<View style={[styles.saveButtonContainer, {
+					top: Platform.OS === 'ios' ? 120 : 80 // Adjust for new header height
+				}]}>
 					<Pressable onPress={handleToggleSave} disabled={isSaveLoading} style={styles.saveButton}>
 						<Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={28} color={'#FFFFFF'} />
 					</Pressable>
@@ -367,7 +390,7 @@ const styles = StyleSheet.create({
 	requestButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 	shareButton: { height: 52, width: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
 	modalContainer: { flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' },
-	closeButton: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, right: 20, zIndex: 1 },
+	closeButton: { position: 'absolute', top: Platform.OS === 'ios' ? 120 : 80, right: 20, zIndex: 1 },
 	fullScreenImage: { width: '100%', height: '100%' },
 	mapContainer: {
 		height: 280,

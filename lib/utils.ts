@@ -438,7 +438,10 @@ class PersistentImageCache {
 
     // Skip blob URLs and other unsupported schemes
     if (url.startsWith('blob:') || url.startsWith('data:') || !url.startsWith('http')) {
-      if (__DEV__) console.log(`PersistentImageCache: Skipping unsupported URL scheme: ${url}`);
+      // Only log in development and only for non-blob URLs to reduce spam
+      if (__DEV__ && !url.startsWith('blob:')) {
+        console.warn(`PersistentImageCache: Skipping unsupported URL scheme: ${url}`);
+      }
       return null;
     }
 
@@ -615,4 +618,30 @@ export function createListingUrl(title: string, id: string): string {
     return id;
   }
   return slug;
+}
+
+// Validate image URL to prevent console errors
+export function validateImageUrl(url: string | undefined | null): string {
+  if (!url || typeof url !== 'string') {
+    return 'https://placehold.co/600x400';
+  }
+
+  // Check for blob URLs and other unsupported schemes
+  if (url.startsWith('blob:') || url.startsWith('data:') || !url.startsWith('http')) {
+    if (__DEV__) {
+      console.warn('ImageCache: Skipping unsupported URL scheme:', url);
+    }
+    return 'https://placehold.co/600x400';
+  }
+
+  // Basic URL validation
+  try {
+    new URL(url);
+    return url;
+  } catch {
+    if (__DEV__) {
+      console.warn('ImageCache: Invalid URL format:', url);
+    }
+    return 'https://placehold.co/600x400';
+  }
 }

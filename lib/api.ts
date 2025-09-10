@@ -1,5 +1,6 @@
 // lib/api.ts
 import { supabase } from '@/config/supabase';
+import { validateImageUrl } from '@/lib/utils';
 const __DEV__ = process.env.NODE_ENV === 'development';
 
 // Fetch all active listings for the main feed with saved status and filters
@@ -14,11 +15,6 @@ export const getListings = async (filters?: {
   utilities_included?: boolean;
   broker_fee_required?: boolean;
 }) => {
-  if (__DEV__) {
-    console.log('=== API getListings Debug ===');
-    console.log('Filters received:', filters);
-    console.log('========================');
-  }
 
   let query = supabase
     .from('listings')
@@ -89,13 +85,9 @@ export const getListings = async (filters?: {
 
   const { data, error } = await query.order('created_at', { ascending: false });
 
-  if (__DEV__) {
-    console.log('=== API Query Results ===');
-    console.log('Query error:', error);
-    console.log('Query data length:', data?.length || 0);
-    console.log('First listing price:', data?.[0]?.price_per_month);
-    console.log('All listing prices:', data?.map(l => l.price_per_month));
-    console.log('========================');
+  // Only log errors to reduce console spam
+  if (__DEV__ && error) {
+    console.warn('API Query Error:', error);
   }
 
   if (error) {
@@ -108,7 +100,7 @@ export const getListings = async (filters?: {
   // Sanitize the data for the UI, providing a fallback preview image
   return data.map(listing => ({
     ...listing,
-    preview_image: listing.image_urls?.[0] || 'https://placehold.co/600x400',
+    preview_image: validateImageUrl(listing.image_urls?.[0]),
     is_saved_by_user: listing.saved_listings.some((save: any) => save.user_id === user?.id),
     // Ensure all fields have default values for the enhanced UI
     square_feet: listing.square_feet || 0,
@@ -146,29 +138,13 @@ export const getListingById = async (id: string) => {
     image_urls: data.image_urls || []
   };
 
-  // Debug logging for image URLs
-  if (__DEV__) {
-    console.log('=== API getListingById Debug ===');
-    console.log('Listing ID:', id);
-    console.log('Raw image_urls from database:', data.image_urls);
-    console.log('Processed image_urls:', result.image_urls);
-    console.log('Image URLs type:', Array.isArray(result.image_urls) ? 'Array' : typeof result.image_urls);
-    console.log('Number of images:', result.image_urls.length);
-    console.log('==========================');
-  }
+  // Removed verbose debug logging for image URLs to reduce console spam
 
   return result;
 };
 
 // Get listing by slug or ID - tries slug first, then falls back to ID
 export const getListingBySlugOrId = async (slugOrId: string) => {
-  if (__DEV__) {
-    console.log('=== getListingBySlugOrId Debug ===');
-    console.log('Input slugOrId:', slugOrId);
-    console.log('Input type:', typeof slugOrId);
-    console.log('Input length:', slugOrId?.length);
-  }
-
   if (!slugOrId) return null;
 
   // First try to find by ID (for backward compatibility)

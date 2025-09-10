@@ -11,7 +11,8 @@ import { useTheme } from '@/context/theme-provider';
 import { useLanguage, TranslationKey } from '@/context/language-provider';
 import { themeColors, spacing, typography, borderRadius, createShadow } from '@/constants/theme';
 import { saveListing, unsaveListing } from '@/lib/api';
-import { imageCache, persistentImageCache, createListingUrl } from '@/lib/utils';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { imageCache, persistentImageCache, createListingUrl, validateImageUrl } from '@/lib/utils';
 
 
 export type Listing = {
@@ -64,7 +65,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const safeNeighborhood = listing.neighborhood || '';
   const safeAddress = listing.location_address || '';
   const safePropertyType = listing.property_type || 'apartment';
-  const safePreviewImage = listing.preview_image || '';
+  const safePreviewImage = validateImageUrl(listing.preview_image);
   const safeNearestUniversity = listing.nearest_university || '';
 
   const toggleSave = async () => {
@@ -154,12 +155,12 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
     setIsPreloading(true);
     try {
-      if (__DEV__) console.log('ListingCard: Preloading images for listing', listing.id);
+      // Only log preload start if there are issues, to reduce console spam
 
       // Preload all detail images with high priority for instant loading
       await imageCache.preloadListingImages(listing.id, listing.image_urls);
 
-      if (__DEV__) console.log('ListingCard: Successfully preloaded', listing.image_urls.length, 'images for listing', listing.id);
+      // Successfully preloaded images (no console spam)
     } catch (error) {
       if (__DEV__) console.warn('ListingCard: Failed to preload images for listing', listing.id, ':', error);
     } finally {
@@ -176,10 +177,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <Pressable
         onPressIn={preloadDetailImages} // Start preloading immediately on press
         onPress={() => {
-          if (__DEV__) {
-            const slug = createListingUrl(listing.title, listing.id);
-            console.log('ListingCard: Navigating to detail page for listing', listing.id, 'with slug', slug);
-          }
+          // Mark that we're navigating from the feed screen to preserve filters
+          AsyncStorage.setItem('navigationSource', 'feed').catch(() => {});
           router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
         }}
       >
@@ -199,10 +198,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           <Pressable
             style={{ flex: 1 }}
             onPress={() => {
-              if (__DEV__) {
-                const slug = createListingUrl(listing.title, listing.id);
-                console.log('ListingCard: Navigating to detail page for listing', listing.id, 'with slug', slug);
-              }
+              // Mark that we're navigating from the feed screen to preserve filters
+              AsyncStorage.setItem('navigationSource', 'feed').catch(() => {});
               router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
             }}
           >

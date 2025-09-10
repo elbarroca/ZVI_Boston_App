@@ -1,12 +1,14 @@
 // app/(tabs)/index.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, FlatList, ActivityIndicator, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, Alert, Animated } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { getListings } from '@/lib/api';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage, TranslationKey, LANGUAGES } from '@/context/language-provider';
 import ListingCard from '@/components/listingcard';
+import { validateImageUrl } from '@/lib/utils';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -82,49 +84,65 @@ export default function FeedScreen() {
   // Animation values for chip interactions
   const chipScaleAnim = React.useRef(new Animated.Value(1)).current;
 
+  // Filter persistence functions
+  const saveFiltersToStorage = async (filters: FilterState) => {
+    try {
+      await AsyncStorage.setItem('feedFilters', JSON.stringify(filters));
+    } catch (error) {
+      console.warn('Failed to save filters to storage:', error);
+    }
+  };
+
+  const loadFiltersFromStorage = async (): Promise<FilterState | null> => {
+    try {
+      const stored = await AsyncStorage.getItem('feedFilters');
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.warn('Failed to load filters from storage:', error);
+      return null;
+    }
+  };
+
   // Debounce the applied filters to prevent excessive API calls
   const debouncedAppliedFilters = useDebounce(appliedFilters, 500);
 
-  // Debug: Log when debounced filters change
+  // Removed verbose filter logging to reduce console spam
+
+  // Load filters from storage on component mount
   useEffect(() => {
-    if (__DEV__) {
-      console.log('=== Debounced Filters Changed ===');
-      console.log('Applied filters:', appliedFilters);
-      console.log('Debounced filters:', debouncedAppliedFilters);
-      console.log('Are they equal?', JSON.stringify(appliedFilters) === JSON.stringify(debouncedAppliedFilters));
-      console.log('========================');
+    const loadFilters = async () => {
+      const storedFilters = await loadFiltersFromStorage();
+      if (storedFilters) {
+        setAppliedFilters(storedFilters);
+        setDraftFilters(storedFilters);
+      }
+    };
+    loadFilters();
+  }, []);
+
+  // Save filters to storage whenever applied filters change
+  useEffect(() => {
+    if (Object.values(appliedFilters).some(value => value !== '' && value !== undefined)) {
+      saveFiltersToStorage(appliedFilters);
     }
-  }, [appliedFilters, debouncedAppliedFilters]);
+  }, [appliedFilters]);
+
+  // Clear navigation source on component mount (we're now on the feed screen)
+  useEffect(() => {
+    AsyncStorage.removeItem('navigationSource').catch(() => {});
+  }, []);
 
   // Pass debounced filters to the query to prevent constant refetching
   const { data: listings, isLoading, isError } = useQuery({
     queryKey: ['listings', debouncedAppliedFilters],
-    queryFn: () => {
-      if (__DEV__) {
-        console.log('=== useQuery calling getListings ===');
-        console.log('Debounced filters being sent:', debouncedAppliedFilters);
-        console.log('========================');
-      }
-      return getListings(debouncedAppliedFilters);
-    },
+    queryFn: () => getListings(debouncedAppliedFilters),
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const handleApplyFilters = () => {
-    if (__DEV__) {
-      console.log('=== Applying Filters ===');
-      console.log('Draft filters:', draftFilters);
-      console.log('Applied filters before:', appliedFilters);
-    }
-
     // Apply the draft filters to the applied filters
     setAppliedFilters(draftFilters);
     setFilterModalVisible(false);
-
-    if (__DEV__) {
-      console.log('Applied filters after:', draftFilters);
-      console.log('========================');
-    }
   };
 
   const getActiveFilters = () => {
@@ -257,7 +275,23 @@ export default function FeedScreen() {
       {/* Scrollable Content */}
       <View style={styles.scrollableContent}>
         <FlatList
-          data={listings?.filter(listing => listing && typeof listing === 'object' && listing.id) || []}
+          data={listings?.filter(listing => {
+            // Basic validation
+            if (!listing || typeof listing !== 'object' || !listing.id) {
+              return false;
+            }
+
+            // Validate image URL to prevent console errors
+            const validatedImageUrl = validateImageUrl(listing.preview_image);
+            if (validatedImageUrl === 'https://placehold.co/600x400' && listing.preview_image) {
+              // If we got a placeholder but had an original URL, log it but still show the listing
+              if (__DEV__) {
+                console.warn('FeedScreen: Invalid image URL for listing:', listing.id, listing.preview_image);
+              }
+            }
+
+            return true;
+          }) || []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ListingCard listing={item} />}
           contentContainerStyle={styles.listContent}
@@ -297,6 +331,8 @@ export default function FeedScreen() {
               };
               setDraftFilters(resetFilters);
               setAppliedFilters(resetFilters);
+              // Clear stored filters as well
+              AsyncStorage.removeItem('feedFilters').catch(() => {});
             }}>
               <Text style={[styles.resetText, { color: colors.primary }]}>{t('resetAll')}</Text>
             </Pressable>
