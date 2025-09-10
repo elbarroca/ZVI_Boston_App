@@ -244,4 +244,127 @@ export class TourService {
       throw error;
     }
   }
+
+  /**
+   * Check for potential time slot conflicts for a user on specific dates
+   * This helps prevent double-booking tours on the same day/time
+   */
+  static async checkTimeSlotConflicts(
+    userId: string,
+    requestedTimeSlots: { time: string; date: string }[],
+    excludeTourRequestId?: number
+  ): Promise<{
+    hasConflicts: boolean;
+    conflictingSlots: { date: string; time: string; existingTourId: number }[];
+  }> {
+    try {
+      // Get all active tour requests for this user
+      let query = supabase
+        .from('tour_requests')
+        .select('id, selected_time_slots, selected_dates')
+        .eq('user_id', userId)
+        .in('status', ['pending', 'confirmed']);
+
+      if (excludeTourRequestId) {
+        query = query.neq('id', excludeTourRequestId);
+      }
+
+      const { data: existingTours, error } = await query;
+
+      if (error) {
+        console.error('Error fetching existing tours for conflict check:', error);
+        throw new Error(`Failed to check time conflicts: ${error.message}`);
+      }
+
+      const conflictingSlots: { date: string; time: string; existingTourId: number }[] = [];
+
+      // Check each requested time slot against existing tours
+      for (const requestedSlot of requestedTimeSlots) {
+        for (const existingTour of existingTours || []) {
+          // Check if the requested date exists in the existing tour dates
+          if (existingTour.selected_dates.includes(requestedSlot.date)) {
+            // Check if the requested time slot conflicts with any existing time slot
+            const existingTimeSlots = existingTour.selected_time_slots || [];
+            const hasTimeConflict = existingTimeSlots.some((existingSlot: { time: string; date: string }) =>
+              existingSlot.date === requestedSlot.date &&
+              existingSlot.time === requestedSlot.time
+            );
+
+            if (hasTimeConflict) {
+              conflictingSlots.push({
+                date: requestedSlot.date,
+                time: requestedSlot.time,
+                existingTourId: existingTour.id
+              });
+            }
+          }
+        }
+      }
+
+      return {
+        hasConflicts: conflictingSlots.length > 0,
+        conflictingSlots
+      };
+    } catch (error) {
+      console.error('Error in checkTimeSlotConflicts:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending tour requests that need response within 24 hours
+   * This helps with the response system mentioned in briefing
+   */
+  static async getPendingToursNeedingResponse(hoursThreshold: number = 24): Promise<TourRequest[]> {
+    try {
+      const thresholdDate = new Date();
+      thresholdDate.setHours(thresholdDate.getHours() - hoursThreshold);
+
+      const { data, error } = await supabase
+        .from('tour_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .lt('created_at', thresholdDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching pending tours needing response:', error);
+        throw new Error(`Failed to fetch pending tours: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getPendingToursNeedingResponse:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark a tour request as needing urgent response
+   * This can be used to flag tours that are approaching the 24-hour deadline
+   */
+  static async markTourAsNeedingResponse(tourRequestId: number): Promise<TourRequest> {
+    try {
+      const { data, error } = await supabase
+        .from('tour_requests')
+        .update({
+          status_message: 'Urgent: Response needed within 24 hours',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tourRequestId)
+        .eq('status', 'pending')
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error marking tour as needing response:', error);
+        throw new Error(`Failed to mark tour as needing response: ${error.message}`);
+      }
+
+      return data as TourRequest;
+    } catch (error) {
+      console.error('Error in markTourAsNeedingResponse:', error);
+      throw error;
+    }
+  }
 }

@@ -65,7 +65,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: TranslationKey, fallback?: string): string => {
-    const translation = translations[currentLanguage.code as keyof typeof translations]?.[key];
+    const translation = (translations[currentLanguage.code as keyof typeof translations] as any)?.[key];
     if (translation) {
       return translation;
     }

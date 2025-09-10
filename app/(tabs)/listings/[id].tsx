@@ -238,7 +238,25 @@ export default function ListingDetailScreen() {
 					contentContainerStyle={styles.scrollContent}
 					showsVerticalScrollIndicator={false}
 				>
-					<ImageCarousel media={media} onImagePress={handleImagePress} />
+					<ImageCarousel
+						media={media}
+						onImagePress={handleImagePress}
+						saveButton={
+							<Pressable
+								onPress={handleToggleSave}
+								disabled={isSaveLoading}
+								style={styles.imageSaveButton}
+								hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+							>
+								<Ionicons
+									name={isSaved ? 'heart' : 'heart-outline'}
+									size={28}
+									color={isSaved ? '#ef4444' : '#ffffff'}
+									style={styles.heartIcon}
+								/>
+							</Pressable>
+						}
+					/>
 
 					<View style={styles.content}>
 						<Text style={[styles.title, { color: colors.text }]}>{listing.title}</Text>
@@ -324,14 +342,6 @@ export default function ListingDetailScreen() {
 					</View>
 				</View>
 
-				{/* Save Button - Absolutely positioned over carousel */}
-				<View style={[styles.saveButtonContainer, {
-					top: Platform.OS === 'ios' ? 120 : 80 // Adjust for new header height
-				}]}>
-					<Pressable onPress={handleToggleSave} disabled={isSaveLoading} style={styles.saveButton}>
-						<Ionicons name={isSaved ? 'heart' : 'heart-outline'} size={28} color={'#FFFFFF'} />
-					</Pressable>
-				</View>
 			</View>
 
 			<TourConfirmationModal
@@ -366,8 +376,21 @@ const styles = StyleSheet.create({
 	mainContainer: { flex: 1 },
 	scrollView: { flex: 1 },
 	scrollContent: { paddingBottom: 100 }, // Space for footer
-	saveButtonContainer: { position: 'absolute', top: Platform.OS === 'ios' ? 60 : 40, right: 20, zIndex: 10 },
-	saveButton: { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 8 },
+	imageSaveButton: {
+		backgroundColor: 'rgba(0, 0, 0, 0.6)',
+		borderRadius: 20,
+		padding: 10,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.3,
+		shadowRadius: 4,
+		elevation: 5,
+	},
+	heartIcon: {
+		textShadowColor: 'rgba(0, 0, 0, 0.5)',
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 2,
+	},
 	content: { padding: 20 },
 	title: { fontSize: 26, fontWeight: 'bold' },
 	address: { fontSize: 16, marginTop: 4 },

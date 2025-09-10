@@ -22,6 +22,9 @@ interface FilterState {
   is_furnished: boolean | undefined;
   utilities_included: boolean | undefined;
   broker_fee_required: boolean | undefined;
+  neighborhood: string;
+  nearUniversity: string;
+  transportDistance: string;
 }
 
 // Custom debounce hook
@@ -62,7 +65,10 @@ export default function FeedScreen() {
     pets_allowed: undefined,
     is_furnished: undefined,
     utilities_included: undefined,
-    broker_fee_required: undefined
+    broker_fee_required: undefined,
+    neighborhood: '',
+    nearUniversity: '',
+    transportDistance: ''
   });
 
   // Draft filters (used for UI inputs)
@@ -75,7 +81,10 @@ export default function FeedScreen() {
     pets_allowed: undefined,
     is_furnished: undefined,
     utilities_included: undefined,
-    broker_fee_required: undefined
+    broker_fee_required: undefined,
+    neighborhood: '',
+    nearUniversity: '',
+    transportDistance: ''
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -161,6 +170,9 @@ export default function FeedScreen() {
     if (appliedFilters.is_furnished) activeFilters.push(t('furnished'));
     if (appliedFilters.utilities_included) activeFilters.push(t('utilitiesIncluded'));
     if (appliedFilters.broker_fee_required === false) activeFilters.push(t('noBrokerFee'));
+    if (appliedFilters.neighborhood) activeFilters.push(`${t('neighborhood')}: ${appliedFilters.neighborhood}`);
+    if (appliedFilters.nearUniversity) activeFilters.push(`${t('nearUniversity')}: ${appliedFilters.nearUniversity}`);
+    if (appliedFilters.transportDistance) activeFilters.push(`${appliedFilters.transportDistance} ${t('blocksFromTransit')}`);
     return activeFilters;
   };
 
@@ -194,6 +206,15 @@ export default function FeedScreen() {
     } else if (filterText === t('noBrokerFee')) {
       newAppliedFilters.broker_fee_required = undefined;
       newDraftFilters.broker_fee_required = undefined;
+    } else if (filterText.includes(t('neighborhood'))) {
+      newAppliedFilters.neighborhood = '';
+      newDraftFilters.neighborhood = '';
+    } else if (filterText.includes(t('nearUniversity'))) {
+      newAppliedFilters.nearUniversity = '';
+      newDraftFilters.nearUniversity = '';
+    } else if (filterText.includes(t('blocksFromTransit'))) {
+      newAppliedFilters.transportDistance = '';
+      newDraftFilters.transportDistance = '';
     }
 
     setAppliedFilters(newAppliedFilters);
@@ -327,7 +348,10 @@ export default function FeedScreen() {
                 pets_allowed: undefined,
                 is_furnished: undefined,
                 utilities_included: undefined,
-                broker_fee_required: undefined
+                broker_fee_required: undefined,
+                neighborhood: '',
+                nearUniversity: '',
+                transportDistance: ''
               };
               setDraftFilters(resetFilters);
               setAppliedFilters(resetFilters);
@@ -792,6 +816,12 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.05,
       shadowRadius: 2,
       elevation: 1,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 12,
+      // Color will be set inline based on theme
     },
     chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     chip: {

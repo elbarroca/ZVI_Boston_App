@@ -1,9 +1,10 @@
-import React from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage } from '@/context/language-provider';
+import { CalendarService } from '@/lib/calendarService';
 
 interface TourRequestSummaryModalProps {
   isVisible: boolean;
@@ -21,9 +22,48 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
   const { theme } = useTheme();
   const { t } = useLanguage();
   const colors = themeColors[theme];
+  const [calendarEventsAdded, setCalendarEventsAdded] = useState<Set<string>>(new Set());
 
   // Debug logging
   console.log('TourRequestSummaryModal render - isVisible:', isVisible, 'tourDetails:', tourDetails);
+
+  const addTourToCalendar = async (date: string, time: string, priority: number) => {
+    try {
+      const hasPermission = await CalendarService.requestPermissions();
+      if (!hasPermission) {
+        Alert.alert(
+          'Calendar Permission Required',
+          'Please enable calendar permissions to add tours to your calendar.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Create calendar event data
+      const eventData = CalendarService.createTourEventData(
+        'Property Address - Contact ZVI for details',
+        date,
+        time,
+        tourDetails.phoneNumber,
+        'Tour request submitted. Waiting for confirmation.'
+      );
+
+      const eventId = await CalendarService.addTourEvent(eventData);
+      if (eventId) {
+        setCalendarEventsAdded(prev => new Set(prev).add(`${date}-${time}`));
+        Alert.alert(
+          'Added to Calendar',
+          `Tour scheduled for ${date} at ${time} has been added to your calendar.`,
+          [{ text: 'Great!' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to add tour to calendar. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error adding tour to calendar:', error);
+      Alert.alert('Error', 'Failed to add tour to calendar.');
+    }
+  };
 
   // Group time slots by date for better organization and determine date priorities
   const groupedSlotsByDate: { [date: string]: { time: string; priority: number }[] } = {};
@@ -98,8 +138,17 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={[styles.confirmationMessage, { color: colors.textSecondary }]}>
-            🎉 Your tour request has been successfully submitted! We'll contact you soon to confirm the best available time.
+            🎉 Your tour request has been successfully submitted! We'll contact you within 24 hours to confirm availability.
           </Text>
+          <View style={styles.nextStepsBox}>
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text style={[styles.nextStepsText, { color: colors.text }]}>
+              <Text style={{ fontWeight: '600' }}>What happens next:</Text>{"\n"}
+              • We'll review your preferred times and confirm availability{"\n"}
+              • Confirmed tours will be automatically added to your calendar{"\n"}
+              • You'll receive a confirmation call/text with final details
+            </Text>
+          </View>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.background }]}>
             <Text style={[styles.summaryTitle, { color: colors.text }]}>📅 Your Selected Schedule</Text>
@@ -119,6 +168,9 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
                       .sort((a, b) => a.priority - b.priority) // Sort by global priority
                       .map((slot, index) => {
                         const isTopChoice = slot.priority === 1; // Check against global priority
+                        const eventKey = `${date}-${slot.time}`;
+                        const isAddedToCalendar = calendarEventsAdded.has(eventKey);
+
                         return (
                           <View key={index} style={[styles.timeSlotItem, {
                             backgroundColor: isTopChoice ? '#FEF3C7' : colors.background,
@@ -132,12 +184,29 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
                                 {slot.priority}
                               </Text>
                             </View>
-                            <Text style={[styles.timeSlotText, {
-                              color: isTopChoice ? colors.text : colors.textSecondary,
-                              fontWeight: isTopChoice ? '600' : '400'
-                            }]}>
-                              {slot.time}
-                            </Text>
+                            <View style={styles.timeSlotContent}>
+                              <Text style={[styles.timeSlotText, {
+                                color: isTopChoice ? colors.text : colors.textSecondary,
+                                fontWeight: isTopChoice ? '600' : '400'
+                              }]}>
+                                {slot.time}
+                              </Text>
+                              <Pressable
+                                style={[styles.calendarButton, {
+                                  backgroundColor: isAddedToCalendar ? '#10B981' : '#1570ef'
+                                }]}
+                                onPress={() => addTourToCalendar(date, slot.time, slot.priority)}
+                              >
+                                <Ionicons
+                                  name={isAddedToCalendar ? "checkmark" : "calendar"}
+                                  size={14}
+                                  color="white"
+                                />
+                                <Text style={styles.calendarButtonText}>
+                                  {isAddedToCalendar ? 'Added' : 'Add to Calendar'}
+                                </Text>
+                              </Pressable>
+                            </View>
                           </View>
                         );
                       })}
@@ -331,6 +400,51 @@ const styles = StyleSheet.create({
   okButtonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  // New styles for improved UX
+  nextStepsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+  },
+  nextStepsText: {
+    fontSize: 14,
+    lineHeight: 22,
+    flex: 1,
+    color: '#166534',
+  },
+  // Calendar integration styles
+  timeSlotContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  calendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    // Shadow for iOS
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2, // Android shadow
+  },
+  calendarButtonText: {
+    color: 'white',
+    fontSize: 10,
     fontWeight: '600',
   },
 });

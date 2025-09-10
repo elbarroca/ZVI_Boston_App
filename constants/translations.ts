@@ -176,6 +176,17 @@ export const translations = {
     'bostonStudentGuide': 'Boston Student Guide',
     'discoverUniversitiesHousingAttractions': 'Discover universities, housing & attractions',
     'loadingBostonAreaGuide': 'Loading Boston area guide...',
+    // New filter translations
+    'neighborhood': 'Neighborhood',
+    'nearUniversity': 'Near University',
+    'blocksFromTransit': 'Blocks from Public Transit',
+    'block': 'block',
+    'blocks': 'blocks',
+    'cambridge': 'Cambridge',
+    'somerville': 'Somerville',
+    'brookline': 'Brookline',
+    'allston': 'Allston',
+    'brighton': 'Brighton',
   },
 
   es: {
@@ -355,6 +366,17 @@ export const translations = {
     'bostonStudentGuide': 'Guía del Estudiante de Boston',
     'discoverUniversitiesHousingAttractions': 'Descubre universidades, vivienda y atracciones',
     'loadingBostonAreaGuide': 'Cargando guía del área de Boston...',
+    // New filter translations
+    'neighborhood': 'Vecindario',
+    'nearUniversity': 'Cerca de Universidad',
+    'blocksFromTransit': 'Cuadras del Transporte Público',
+    'block': 'cuadra',
+    'blocks': 'cuadras',
+    'cambridge': 'Cambridge',
+    'somerville': 'Somerville',
+    'brookline': 'Brookline',
+    'allston': 'Allston',
+    'brighton': 'Brighton',
   },
 
   zh: {
@@ -713,6 +735,17 @@ export const translations = {
     'bostonStudentGuide': 'Guide Étudiant de Boston',
     'discoverUniversitiesHousingAttractions': 'Découvrez les universités, logements et attractions',
     'loadingBostonAreaGuide': 'Chargement du guide de la région de Boston...',
+    // New filter translations
+    'neighborhood': 'Quartier',
+    'nearUniversity': 'Près de l\'Université',
+    'blocksFromTransit': 'Blocs du Transport Public',
+    'block': 'bloc',
+    'blocks': 'blocs',
+    'cambridge': 'Cambridge',
+    'somerville': 'Somerville',
+    'brookline': 'Brookline',
+    'allston': 'Allston',
+    'brighton': 'Brighton',
   },
 
   pt: {
@@ -1258,5 +1291,16 @@ export const translations = {
     'bostonStudentGuide': 'מדריך הסטודנט של בוסטון',
     'discoverUniversitiesHousingAttractions': 'גלה אוניברסיטאות, דיור ואטרקציות',
     'loadingBostonAreaGuide': 'טוען את מדריך אזור בוסטון...',
+    // New filter translations
+    'neighborhood': 'שכונה',
+    'nearUniversity': 'ליד אוניברסיטה',
+    'blocksFromTransit': 'גושים מתחבורה ציבורית',
+    'block': 'גוש',
+    'blocks': 'גושים',
+    'cambridge': 'קיימברידג\'',
+    'somerville': 'סומרוויל',
+    'brookline': 'ברוקליין',
+    'allston': 'אלסטון',
+    'brighton': 'ברייטון',
   },
 };

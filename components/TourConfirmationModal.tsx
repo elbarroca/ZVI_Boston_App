@@ -297,6 +297,55 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
     setIsSubmitting(false);
   };
 
+  const submitTourRequest = async () => {
+    if (!session?.user?.id) {
+      throw new Error('User session not available');
+    }
+
+    // Group by date for the service
+    const groupedByDate: {[key: string]: {time: string, priority: number}[]} = {};
+    selectedDaySlots.forEach((slot: {date: string, time: string, priority: number}) => {
+      if (!groupedByDate[slot.date]) {
+        groupedByDate[slot.date] = [];
+      }
+      groupedByDate[slot.date].push({time: slot.time, priority: slot.priority});
+    });
+
+    await TourService.createTourRequest(listingId, {
+      dates: Object.keys(groupedByDate),
+      timeSlots: selectedDaySlots.map((slot: {date: string, time: string, priority: number}) => ({
+        time: slot.time,
+        priority: slot.priority,
+        date: slot.date // Include date information
+      })),
+      notes,
+      phoneNumber,
+      countryCode: selectedCountryCode,
+    }, session.user.id);
+
+    // Successfully submitted - show summary modal
+    console.log('Tour request submitted successfully, showing summary modal');
+    console.log('Setting isSummaryModalVisible to true');
+    setIsSummaryModalVisible(true);
+    console.log('isSummaryModalVisible should now be true');
+
+    // Don't call success callback immediately - let user see the summary first
+    // The success callback will be called when they close the summary modal
+  };
+
+  const submitTourRequestAnyway = async () => {
+    try {
+      await submitTourRequest();
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Error submitting tour request:', err.message || err);
+      const errorMessage = err.message || 'An unknown error occurred';
+      Alert.alert(t('couldNotSubmitTourRequest'), errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmitTourRequest = async () => {
     if (selectedDaySlots.length === 0) {
       Alert.alert(t('selectDateTime'));
@@ -323,6 +372,7 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
     setIsSubmitting(true);
 
     try {
+      // Check for existing tour request for this listing
       const hasExistingRequest = await TourService.hasUserRequestedTourForListing(session.user.id, listingId);
       if (hasExistingRequest) {
         Alert.alert(t('tourRequestAlreadyExists'));
@@ -330,41 +380,44 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
         return;
       }
 
-      // Group by date for the service
-      const groupedByDate: {[key: string]: {time: string, priority: number}[]} = {};
-      selectedDaySlots.forEach((slot: {date: string, time: string, priority: number}) => {
-        if (!groupedByDate[slot.date]) {
-          groupedByDate[slot.date] = [];
-        }
-        groupedByDate[slot.date].push({time: slot.time, priority: slot.priority});
-      });
+      // Check for time slot conflicts with other pending/confirmed tours
+      const conflictCheck = await TourService.checkTimeSlotConflicts(
+        session.user.id,
+        selectedDaySlots.map(slot => ({ time: slot.time, date: slot.date }))
+      );
 
-      await TourService.createTourRequest(listingId, {
-        dates: Object.keys(groupedByDate),
-        timeSlots: selectedDaySlots.map((slot: {date: string, time: string, priority: number}) => ({
-          time: slot.time,
-          priority: slot.priority,
-          date: slot.date // Include date information
-        })),
-        notes,
-        phoneNumber,
-        countryCode: selectedCountryCode,
-      }, session.user.id);
+      if (conflictCheck.hasConflicts) {
+        const conflictMessage = `You already have a tour scheduled at the same time:\n\n${
+          conflictCheck.conflictingSlots.map(slot =>
+            `• ${slot.date} at ${slot.time}`
+          ).join('\n')
+        }\n\nWould you like to proceed anyway, or adjust your time slots?`;
 
-      // Successfully submitted - show summary modal
-      console.log('Tour request submitted successfully, showing summary modal');
-      console.log('Setting isSummaryModalVisible to true');
-      setIsSummaryModalVisible(true);
-      console.log('isSummaryModalVisible should now be true');
+        Alert.alert(
+          'Time Conflict Detected',
+          conflictMessage,
+          [
+            {
+              text: 'Adjust Times',
+              style: 'default',
+              onPress: () => setIsSubmitting(false)
+            },
+            {
+              text: 'Proceed Anyway',
+              style: 'destructive',
+              onPress: () => submitTourRequestAnyway()
+            }
+          ]
+        );
+        return;
+      }
 
-      // Don't call success callback immediately - let user see the summary first
-      // The success callback will be called when they close the summary modal
+      await submitTourRequest();
     } catch (error: unknown) {
       const err = error as Error;
       console.error('Error submitting tour request:', err.message || err);
       const errorMessage = err.message || 'An unknown error occurred';
       Alert.alert(t('couldNotSubmitTourRequest'), errorMessage);
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -424,6 +477,12 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
               </View>
               <Text style={[styles.stepTitle, { color: colors.text }]}>📅 Select up to 3 Days</Text>
             </View>
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle" size={16} color={colors.primary} />
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                Choose dates that work for you. We'll confirm availability within 24 hours and add confirmed tours to your calendar.
+              </Text>
+            </View>
             <Calendar
               minDate={(() => {
                 const tomorrow = new Date();
@@ -472,9 +531,16 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                 </View>
                 <Text style={[styles.stepTitle, { color: colors.text }]}>⏰ Choose Times for Each Day</Text>
               </View>
-                              <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
+              <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
                 Choose morning or afternoon for each day, then select your preferred time slots. We'll contact you to confirm availability.
               </Text>
+              <View style={styles.rulesBox}>
+                <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
+                <Text style={[styles.rulesText, { color: colors.textSecondary }]}>
+                  <Text style={{ fontWeight: '600' }}>Tour Rules:</Text> You can select up to 3 time slots per day, maximum 3 days total.
+                  Priority ranking helps us know your top choices. We'll confirm within 24 hours.
+                </Text>
+              </View>
 
                             {Object.keys(selectedDates).map(date => {
                 const selectedPeriod = selectedPeriods[date] || 'morning';
@@ -651,6 +717,12 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
 
           <View style={[styles.section, styles.phoneSection]}>
             <Text style={[styles.stepTitle, { color: colors.text }]}>📞 {t('contactByPhone')} *</Text>
+            <View style={styles.responseInfoBox}>
+              <Ionicons name="time" size={16} color={colors.primary} />
+              <Text style={[styles.responseInfoText, { color: colors.textSecondary }]}>
+                We'll respond within 24 hours to confirm your tour times. Confirmed tours will be automatically added to your calendar.
+              </Text>
+            </View>
             <View style={styles.phoneInputContainer}>
               <Pressable style={[styles.countryCodePicker, {
                 borderColor: phoneValidationError ? colors.error || '#ef4444' : colors.border,
@@ -1319,11 +1391,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0F2FE',
   },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 20,
-    flex: 1,
-  },
   okButton: {
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1335,5 +1402,58 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // New styles for improved UX
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    color: '#64748B',
+  },
+  rulesBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  rulesText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    color: '#92400E',
+  },
+  responseInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  responseInfoText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    color: '#065F46',
   },
 });

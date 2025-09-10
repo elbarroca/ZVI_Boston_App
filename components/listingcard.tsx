@@ -181,12 +181,25 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           AsyncStorage.setItem('navigationSource', 'feed').catch(() => {});
           router.push(`/(tabs)/listings/${createListingUrl(listing.title, listing.id)}`);
         }}
+        style={styles.imageContainer}
       >
         <Image
           source={{ uri: safePreviewImage }}
           style={styles.image}
           contentFit="cover"
         />
+        <Pressable
+          onPress={toggleSave}
+          style={styles.heartButtonOverlay}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons
+            name={isSaved ? 'heart' : 'heart-outline'}
+            size={28}
+            color={isSaved ? '#ef4444' : '#ffffff'}
+            style={styles.heartIcon}
+          />
+        </Pressable>
         {isPreloading && (
           <View style={styles.preloadingOverlay}>
             <Text style={styles.preloadingText}>Preloading images...</Text>
@@ -308,17 +321,6 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               </Text>
             </View>
           </Pressable>
-          <Pressable onPress={toggleSave} style={[styles.heartButton, {
-            backgroundColor: colors.surface,
-            borderRadius: borderRadius.lg,
-            ...createShadow(1)
-          }]}>
-            <Ionicons
-              name={isSaved ? 'heart' : 'heart-outline'}
-              size={28}
-              color={isSaved ? colors.error : colors.textSecondary}
-            />
-          </Pressable>
         </View>
       </View>
     </View>
@@ -330,16 +332,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: spacing.xl,
   },
+  imageContainer: {
+    position: 'relative',
+  },
   image: {
     width: '100%',
     height: 220,
+  },
+  heartButtonOverlay: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    ...createShadow(2),
+  },
+  heartIcon: {
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   infoContainer: {
     padding: spacing.md,
   },
   detailsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
   title: {
@@ -428,9 +446,6 @@ const styles = StyleSheet.create({
   priceQualifier: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.normal,
-  },
-  heartButton: {
-    padding: spacing.sm,
   },
   preloadingOverlay: {
     position: 'absolute',

@@ -12,9 +12,10 @@ type ImageCarouselProps = {
   media: MediaItem[];
   onImagePress: (index: number) => void;
   height?: number;
+  saveButton?: React.ReactNode;
 };
 
-export default function ImageCarousel({ media, onImagePress, height = 300 }: ImageCarouselProps) {
+export default function ImageCarousel({ media, onImagePress, height = 300, saveButton }: ImageCarouselProps) {
   if (!media || media.length === 0) {
     return (
       <View style={[styles.placeholderContainer, { height }]}>
@@ -44,6 +45,11 @@ export default function ImageCarousel({ media, onImagePress, height = 300 }: Ima
           <View style={styles.multipleImagesIndicator}>
             <Ionicons name="images" size={20} color="white" />
             <Text style={styles.multipleImagesText}>{media.length}</Text>
+          </View>
+        )}
+        {saveButton && (
+          <View style={styles.saveButtonOverlay}>
+            {saveButton}
           </View>
         )}
       </Pressable>
@@ -97,5 +103,11 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 16,
     fontWeight: '500',
+  },
+  saveButtonOverlay: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
   },
 });
