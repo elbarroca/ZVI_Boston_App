@@ -1,6 +1,6 @@
 // app/(auth)/index.tsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet, Alert, Image, Dimensions, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useRouter } from 'expo-router';
 import { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, configureGoogleSignIn } from '@/lib/auth';
@@ -15,6 +15,9 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
   const router = useRouter();
 
   // Configure authentication providers when component mounts
@@ -33,16 +36,23 @@ export default function AuthScreen() {
   }, []);
 
   const handleEmailAuth = async () => {
-    const action = isSignUp ? signUpWithEmail : signInWithEmail;
-    const { error } = await action(email, password);
-    if (error) {
-      Alert.alert(error.message);
-    } else if (isSignUp) {
-      Alert.alert("Success!", "Please check your email for confirmation.");
-    } else {
-      // For sign-in, explicitly navigate to tabs after successful auth
-      console.log('Email sign-in successful, navigating to tabs...');
-      router.replace('/(tabs)');
+    if (isEmailLoading) return;
+
+    setIsEmailLoading(true);
+    try {
+      const action = isSignUp ? signUpWithEmail : signInWithEmail;
+      const { error } = await action(email, password);
+      if (error) {
+        Alert.alert(error.message);
+      } else if (isSignUp) {
+        Alert.alert("Success!", "Please check your email for confirmation.");
+      } else {
+        // For sign-in, explicitly navigate to tabs after successful auth
+        console.log('Email sign-in successful, navigating to tabs...');
+        router.replace('/(tabs)');
+      }
+    } finally {
+      setIsEmailLoading(false);
     }
   };
 
@@ -63,22 +73,37 @@ export default function AuthScreen() {
             styles.googleButton,
             (hovered) && styles.googleButtonHovered,
             pressed && styles.buttonPressed,
+            isGoogleLoading && styles.buttonDisabled,
           ]}
           onPress={async () => {
-            console.log('--- TAPPED GOOGLE SIGN IN BUTTON ---');
-            console.log('--- Starting OAuth flow ---');
-            const data = await signInWithGoogle();
-            if (data) {
-              console.log('--- OAuth initiated successfully ---');
-              console.log('--- Waiting for redirect back to app ---');
-            } else {
-              console.log('--- OAuth initiation failed ---');
+            if (isGoogleLoading) return;
+
+            setIsGoogleLoading(true);
+            try {
+              console.log('--- TAPPED GOOGLE SIGN IN BUTTON ---');
+              console.log('--- Starting OAuth flow ---');
+              const data = await signInWithGoogle();
+              if (data) {
+                console.log('--- OAuth initiated successfully ---');
+                console.log('--- Waiting for redirect back to app ---');
+              } else {
+                console.log('--- OAuth initiation failed ---');
+              }
+            } finally {
+              setIsGoogleLoading(false);
             }
           }}
+          disabled={isGoogleLoading}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <GoogleIcon width={Platform.OS === 'web' ? 22 : 20} height={Platform.OS === 'web' ? 22 : 20} />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
+            {isGoogleLoading ? (
+              <ActivityIndicator size="small" color="#374151" style={{ marginRight: 12 }} />
+            ) : (
+              <GoogleIcon width={Platform.OS === 'web' ? 22 : 20} height={Platform.OS === 'web' ? 22 : 20} />
+            )}
+            <Text style={[styles.googleButtonText, isGoogleLoading && styles.buttonTextDisabled]}>
+              {isGoogleLoading ? 'Signing in...' : 'Continue with Google'}
+            </Text>
           </View>
         </Pressable>
 
@@ -90,12 +115,29 @@ export default function AuthScreen() {
               styles.appleButton,
               (hovered) && styles.appleButtonHovered,
               pressed && styles.buttonPressed,
+              isAppleLoading && styles.buttonDisabled,
             ]}
-            onPress={signInWithApple}
+            onPress={async () => {
+              if (isAppleLoading) return;
+
+              setIsAppleLoading(true);
+              try {
+                await signInWithApple();
+              } finally {
+                setIsAppleLoading(false);
+              }
+            }}
+            disabled={isAppleLoading}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="logo-apple" size={Platform.OS === 'web' ? 22 : 20} color="#000000" />
-              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+              {isAppleLoading ? (
+                <ActivityIndicator size="small" color="#000000" style={{ marginRight: 12 }} />
+              ) : (
+                <Ionicons name="logo-apple" size={Platform.OS === 'web' ? 22 : 20} color="#000000" />
+              )}
+              <Text style={[styles.appleButtonText, isAppleLoading && styles.buttonTextDisabled]}>
+                {isAppleLoading ? 'Signing in...' : 'Continue with Apple'}
+              </Text>
             </View>
           </Pressable>
         )}
@@ -123,7 +165,8 @@ export default function AuthScreen() {
 
         <EmailAuthButton
           onPress={handleEmailAuth}
-          title={isSignUp ? 'Create Account' : 'Sign In'}
+          title={isEmailLoading ? (isSignUp ? 'Creating Account...' : 'Signing In...') : (isSignUp ? 'Create Account' : 'Sign In')}
+          disabled={isEmailLoading}
           buttonStyle={{
             backgroundColor: 'transparent', // Make background transparent
             marginTop: 24,
@@ -134,6 +177,7 @@ export default function AuthScreen() {
             shadowRadius: 0,
             elevation: 0,
             borderWidth: 0, // Ensure no border
+            opacity: isEmailLoading ? 0.7 : 1,
           }}
           textStyle={{
             color: '#1A1A1A', // Black text
@@ -242,11 +286,17 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
     shadowOpacity: 0.05
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonTextDisabled: {
+    opacity: 0.7,
+  },
   googleButton: {
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#E2E8F0',
-    marginBottom: 8,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -270,8 +320,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: '#E2E8F0',
-    marginTop: 16,
-    marginBottom: 16,
+    marginTop: 20,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -304,7 +354,7 @@ const styles = StyleSheet.create({
   orText: {
     color: '#94A3B8',
     textAlign: 'center',
-    marginVertical: Platform.OS === 'web' ? 32 : 24,
+    marginVertical: Platform.OS === 'web' ? 36 : 28,
     fontSize: Platform.OS === 'web' ? 15 : 14,
     fontWeight: '500',
     letterSpacing: 1

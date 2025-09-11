@@ -9,22 +9,25 @@ interface EmailAuthButtonProps {
   width?: DimensionValue;
   buttonStyle?: object; // New prop for custom button styles
   maxWidth?: DimensionValue;
+  disabled?: boolean;
 }
 
-export const EmailAuthButton: React.FC<EmailAuthButtonProps> = ({ onPress, title, style, textStyle, width = '100%', buttonStyle, maxWidth }) => {
+export const EmailAuthButton: React.FC<EmailAuthButtonProps> = ({ onPress, title, style, textStyle, width = '100%', buttonStyle, maxWidth, disabled = false }) => {
   return (
     <Pressable
       style={({ pressed, hovered }) => [
         styles.baseButton,
         { width, maxWidth: maxWidth || (Platform.OS === 'web' ? 420 : Dimensions.get('window').width * 0.85) },
-        (hovered) && styles.buttonHovered,
-        pressed && styles.buttonPressed,
+        (hovered) && !disabled && styles.buttonHovered,
+        pressed && !disabled && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
         style,
         buttonStyle, // Apply custom button styles
       ]}
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
     >
-      <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+      <Text style={[styles.buttonText, textStyle, disabled && styles.buttonTextDisabled]}>{title}</Text>
     </Pressable>
   );
 };
@@ -54,11 +57,17 @@ const styles = StyleSheet.create({
   buttonHovered: {
     // Placeholder for general button hover state if needed
   },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   buttonText: {
     color: '#FFFFFF',
     fontSize: Platform.OS === 'web' ? 18 : 17,
     fontWeight: '700',
     letterSpacing: 0.5,
     textAlign: 'center',
+  },
+  buttonTextDisabled: {
+    opacity: 0.7,
   },
 });

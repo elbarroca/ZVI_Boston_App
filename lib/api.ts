@@ -14,6 +14,7 @@ export const getListings = async (filters?: {
   is_furnished?: boolean;
   utilities_included?: boolean;
   broker_fee_required?: boolean;
+  neighborhood?: string;
 }) => {
 
   let query = supabase
@@ -26,20 +27,14 @@ export const getListings = async (filters?: {
 
   // Dynamically build the query based on the filters provided
   if (filters && typeof filters === 'object') {
-    if (__DEV__) {
-      console.log('=== Building Query Filters ===');
-      console.log('Available filters:', Object.keys(filters));
-    }
 
     // Price filters
     if (filters?.minPrice) {
       const minPriceInt = parseInt(filters.minPrice, 10);
-      if (__DEV__) console.log('Applying minPrice filter:', minPriceInt);
       query = query.gte('price_per_month', minPriceInt);
     }
     if (filters?.maxPrice) {
       const maxPriceInt = parseInt(filters.maxPrice, 10);
-      if (__DEV__) console.log('Applying maxPrice filter:', maxPriceInt);
       query = query.lte('price_per_month', maxPriceInt);
     }
 
@@ -76,12 +71,22 @@ export const getListings = async (filters?: {
       query = query.eq('broker_fee_required', filters.broker_fee_required);
     }
 
-    if (__DEV__) {
-      console.log('=== Filter Building Complete ===');
-      console.log('All filters processed');
-      console.log('========================');
+    // Neighborhood filter - handle multiple neighborhoods
+    if (filters?.neighborhood && filters.neighborhood !== '') {
+      const neighborhoods = filters.neighborhood.split(',').map(n => n.trim()).filter(n => n.length > 0);
+      if (neighborhoods.length === 1) {
+        // Single neighborhood - use exact match
+        query = query.ilike('neighborhood', `%${neighborhoods[0]}%`);
+      } else if (neighborhoods.length > 1) {
+        // Multiple neighborhoods - use OR condition
+        const neighborhoodConditions = neighborhoods.map(n => `neighborhood.ilike.%${n}%`).join(',');
+        query = query.or(neighborhoodConditions);
+      }
     }
   }
+
+  // Get current user for saved status
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -94,11 +99,8 @@ export const getListings = async (filters?: {
     throw new Error(error.message);
   }
 
-  // Get current user for saved status
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Sanitize the data for the UI, providing a fallback preview image
-  return data.map(listing => ({
+  // Process listings and determine saved status
+  const processedListings = data.map(listing => ({
     ...listing,
     preview_image: validateImageUrl(listing.image_urls?.[0]),
     is_saved_by_user: listing.saved_listings.some((save: any) => save.user_id === user?.id),
@@ -116,6 +118,16 @@ export const getListings = async (filters?: {
     latitude: listing.latitude || (42.35 + (Math.random() - 0.5) * 0.05), // Boston area with some random variation
     longitude: listing.longitude || (-71.09 + (Math.random() - 0.5) * 0.05),
   }));
+
+  // Sort to show saved listings first, then by creation date
+  return processedListings.sort((a, b) => {
+    // First priority: saved listings come first
+    if (a.is_saved_by_user && !b.is_saved_by_user) return -1;
+    if (!a.is_saved_by_user && b.is_saved_by_user) return 1;
+
+    // Second priority: creation date (newest first)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 };
 
 // Fetch a single listing by its ID for the detail page
@@ -517,6 +529,131 @@ export const getUserProfile = async (userId: string) => {
   }
 
   return data;
+};
+
+// Ensure user profile exists (create if missing)
+export const ensureUserProfile = async (user: any) => {
+  try {
+    // First check if profile exists
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (existingProfile) {
+      console.log('✅ User profile already exists');
+      return existingProfile;
+    }
+
+    // Profile doesn't exist, create it
+    console.log('🔧 Creating user profile...');
+
+    // First, try to get the table structure by doing a simple query
+    const { data: tableInfo, error: tableError } = await supabase
+      .from('profiles')
+      .select('*')
+      .limit(1);
+
+    // Log what columns are available
+    if (tableInfo && tableInfo.length > 0) {
+      console.log('📋 Available profile columns:', Object.keys(tableInfo[0]));
+    } else {
+      // If no rows exist, try to insert with minimal required fields
+      console.log('📋 No existing profiles, trying minimal insert...');
+    }
+
+    // Extract user data from OAuth metadata
+    const fullName = user.user_metadata?.name ||
+                    user.user_metadata?.full_name ||
+                    user.user_metadata?.given_name + ' ' + user.user_metadata?.family_name ||
+                    null;
+
+    const avatarUrl = user.user_metadata?.avatar_url ||
+                     user.user_metadata?.picture ||
+                     null;
+
+    // Create profile data matching your actual table structure
+    const profileData = {
+      id: user.id,
+      email: user.email || null,
+      full_name: fullName,
+      avatar_url: avatarUrl,
+      phone_number: null, // Will be updated later when user provides it
+      college: null, // Will be updated later
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('📤 Attempting to insert profile with data:', JSON.stringify(profileData, null, 2));
+
+    const { data: newProfile, error: createError } = await supabase
+      .from('profiles')
+      .insert(profileData)
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('❌ Error creating user profile:', createError);
+      console.error('❌ Create error details:', {
+        code: createError.code,
+        message: createError.message,
+        details: createError.details,
+        hint: createError.hint
+      });
+
+      // If it's a duplicate key error (profile already exists), that's actually OK
+      if (createError.code === '23505') {
+        console.log('ℹ️ Profile already exists, fetching existing profile...');
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (fetchError) {
+          console.error('❌ Error fetching existing profile:', fetchError);
+          throw new Error(`Failed to fetch existing profile: ${fetchError.message}`);
+        }
+
+        console.log('✅ Found existing profile');
+        return existingProfile;
+      }
+
+      // If it's a column error, try with minimal required fields only
+      if (createError.message.includes('column') || createError.code === 'PGRST204') {
+        console.log('🔄 Retrying with minimal required fields only...');
+        const minimalProfileData = {
+          id: user.id,
+          email: user.email || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: minimalProfile, error: minimalError } = await supabase
+          .from('profiles')
+          .insert(minimalProfileData)
+          .select()
+          .single();
+
+        if (minimalError) {
+          console.error('❌ Even minimal insert failed:', minimalError);
+          throw new Error(`Failed to create user profile: ${minimalError.message}`);
+        }
+
+        console.log('✅ Minimal user profile created successfully');
+        return minimalProfile;
+      }
+
+      throw new Error(`Failed to create user profile: ${createError.message}`);
+    }
+
+    console.log('✅ User profile created successfully:', newProfile);
+    return newProfile;
+  } catch (error) {
+    console.error('❌ Error in ensureUserProfile:', error);
+    throw error;
+  }
 };
 
 // Check if user already has an active tour request for a specific listing

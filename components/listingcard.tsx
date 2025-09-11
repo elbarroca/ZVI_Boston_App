@@ -19,23 +19,25 @@ export type Listing = {
   title: string;
   price_per_month: number;
   neighborhood: string;
-  location_address: string;
+  location_address?: string;
   bedrooms: number;
   bathrooms: number;
-  square_feet: number;
+  square_feet?: number;
   property_type: string;
-  university_proximity_minutes: number;
-  nearest_university: string;
-  laundry_type: string;
-  parking_type: string;
-  is_furnished: boolean;
-  utilities_included: boolean;
-  pets_allowed: boolean;
+  university_proximity_minutes?: number;
+  nearest_university?: string;
+  laundry_type?: string;
+  parking_type?: string;
+  is_furnished?: boolean;
+  utilities_included?: boolean;
+  pets_allowed?: boolean;
+  broker_fee_required?: boolean;
   preview_image: string;
   image_urls?: string[];
   is_saved_by_user?: boolean;
   latitude?: number;
   longitude?: number;
+  created_at?: string;
 };
 
 export default function ListingCard({ listing }: { listing: Listing }) {
@@ -55,7 +57,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [isPreloading, setIsPreloading] = useState(false);
 
   // Validate required fields and provide defaults
-  const safeTitle = listing.title || 'Untitled Property';
+  const safeTitle = listing.title || t('untitledProperty');
   const safePrice = listing.price_per_month || 0;
   const safeBedrooms = listing.bedrooms || 0;
   const safeBathrooms = listing.bathrooms || 0;
@@ -261,7 +263,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={2}>
                 {(() => {
                   const locationParts = [safeNeighborhood, safeAddress].filter(Boolean);
-                  return locationParts.length > 0 ? locationParts.join(', ') : 'Location not specified';
+                  return locationParts.length > 0 ? locationParts.join(', ') : t('locationNotSpecified');
                 })()}
               </Text>
             </View>
@@ -315,7 +317,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Price */}
             <View style={styles.priceContainer}>
               <Text style={[styles.price, { color: colors.text }]}>
-                {safePrice > 0 ? `$${safePrice.toLocaleString()}` : 'Price not available'}
+                {safePrice > 0 ? `$${safePrice.toLocaleString()}` : t('priceNotAvailable')}
               </Text>
               <Text style={[styles.priceQualifier, { color: colors.textSecondary }]}>
                 {safePrice > 0 ? ` ${String(t('perMonth'))}` : ''}

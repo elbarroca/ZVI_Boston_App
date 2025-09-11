@@ -33,10 +33,15 @@ const InitialLayout = () => {
   const segments = useSegments();
   const router = useRouter();
 
+  // Track if we've already handled the initial URL to prevent repeated logging
+  const [initialUrlHandled, setInitialUrlHandled] = useState(false);
+
   useEffect(() => {
     // Set up deep link listener for OAuth callbacks and listing URLs
     const handleDeepLink = ({ url }: { url: string }) => {
-      console.log('Deep link received:', url);
+      if (__DEV__) {
+        console.log('Deep link received:', url);
+      }
 
       // Check if this is an OAuth callback
       if (url.includes('auth/callback')) {
@@ -73,7 +78,7 @@ const InitialLayout = () => {
           
           if (listingsIndex !== -1 && listingsIndex + 1 < pathSegments.length) {
             const listingSlugOrId = pathSegments[listingsIndex + 1];
-            console.log('Navigating to listing:', listingSlugOrId);
+            if (__DEV__) console.log('Navigating to listing:', listingSlugOrId);
             
             // Navigate to the listing, ensuring user is authenticated first
             if (session) {
@@ -101,12 +106,15 @@ const InitialLayout = () => {
     // Add deep link listener
     const subscription = Linking.addEventListener('url', handleDeepLink);
 
-    // Check initial URL when app starts
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        console.log('Initial URL:', url);
-        
-        if (url.includes('auth/callback')) {
+    // Check initial URL when app starts (only once)
+    if (!initialUrlHandled) {
+      Linking.getInitialURL().then((url) => {
+        if (url) {
+          if (__DEV__) {
+            console.log('Initial URL:', url);
+          }
+
+          if (url.includes('auth/callback')) {
           try {
             const parsedUrl = Linking.parse(url);
 
@@ -137,14 +145,14 @@ const InitialLayout = () => {
             
             if (listingsIndex !== -1 && listingsIndex + 1 < pathSegments.length) {
               const listingSlugOrId = pathSegments[listingsIndex + 1];
-              console.log('Initial listing navigation:', listingSlugOrId);
+              if (__DEV__) console.log('Initial listing navigation:', listingSlugOrId);
               
               // Store the intended destination for after authentication
               if (session) {
                 router.replace(`/(tabs)/listings/${listingSlugOrId}`);
               } else {
                 // Will be handled by the auth redirect logic below
-                console.log('User not authenticated, will redirect after login');
+                if (__DEV__) console.log('User not authenticated, will redirect after login');
               }
             }
           } catch (error) {
@@ -152,9 +160,12 @@ const InitialLayout = () => {
           }
         }
       }
+      setInitialUrlHandled(true);
     }).catch((error) => {
       console.error('Error getting initial URL:', error);
+      setInitialUrlHandled(true); // Set flag even on error to prevent retry
     });
+    }
 
     // 1. Wait until the session is loaded.
     if (isLoading) {

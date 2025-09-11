@@ -11,21 +11,7 @@ import ListingCard from '@/components/listingcard';
 import { validateImageUrl } from '@/lib/utils';
 import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-
-interface FilterState {
-  minPrice: string;
-  maxPrice: string;
-  beds: string;
-  laundry: string;
-  parking: boolean | undefined;
-  pets_allowed: boolean | undefined;
-  is_furnished: boolean | undefined;
-  utilities_included: boolean | undefined;
-  broker_fee_required: boolean | undefined;
-  neighborhood: string;
-  nearUniversity: string;
-  transportDistance: string;
-}
+import Filters, { FilterState } from '@/components/Filters';
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -49,11 +35,15 @@ export default function FeedScreen() {
   const { currentLanguage, setLanguage, t } = useLanguage();
   const colors = themeColors[theme];
 
+  // Track if we've loaded initial filters to prevent unnecessary re-renders
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
 
-  // Debug logging
+  // Debug logging (only in development)
   useEffect(() => {
-    console.log('FeedScreen language changed to:', currentLanguage.name);
-  }, [currentLanguage]);
+    if (__DEV__) {
+      console.log('FeedScreen language changed to:', currentLanguage.name);
+    }
+  }, [currentLanguage.name]);
 
   // Applied filters (used for API calls)
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({
@@ -68,7 +58,8 @@ export default function FeedScreen() {
     broker_fee_required: undefined,
     neighborhood: '',
     nearUniversity: '',
-    transportDistance: ''
+    transportDistance: '',
+    showAllNeighborhoods: false
   });
 
   // Draft filters (used for UI inputs)
@@ -84,14 +75,13 @@ export default function FeedScreen() {
     broker_fee_required: undefined,
     neighborhood: '',
     nearUniversity: '',
-    transportDistance: ''
+    transportDistance: '',
+    showAllNeighborhoods: false
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [isLanguageModalVisible, setLanguageModalVisible] = useState(false);
 
-  // Animation values for chip interactions
-  const chipScaleAnim = React.useRef(new Animated.Value(1)).current;
 
   // Filter persistence functions
   const saveFiltersToStorage = async (filters: FilterState) => {
@@ -115,7 +105,17 @@ export default function FeedScreen() {
   // Debounce the applied filters to prevent excessive API calls
   const debouncedAppliedFilters = useDebounce(appliedFilters, 500);
 
-  // Removed verbose filter logging to reduce console spam
+  // Create a stable query key for React Query
+  const queryKey = useMemo(() => {
+    // Only include non-empty filters in the query key to prevent unnecessary refetches
+    const keyFilters: any = {};
+    Object.entries(debouncedAppliedFilters).forEach(([key, value]) => {
+      if (value !== '' && value !== undefined && value !== null) {
+        keyFilters[key] = value;
+      }
+    });
+    return ['listings', keyFilters];
+  }, [debouncedAppliedFilters]);
 
   // Load filters from storage on component mount
   useEffect(() => {
@@ -125,28 +125,91 @@ export default function FeedScreen() {
         setAppliedFilters(storedFilters);
         setDraftFilters(storedFilters);
       }
+      setFiltersInitialized(true);
     };
     loadFilters();
   }, []);
 
-  // Save filters to storage whenever applied filters change
+  // Save filters to storage whenever applied filters change (only after initialization)
   useEffect(() => {
-    if (Object.values(appliedFilters).some(value => value !== '' && value !== undefined)) {
-      saveFiltersToStorage(appliedFilters);
-    }
-  }, [appliedFilters]);
+    if (!filtersInitialized) return;
+
+    const saveFilters = async () => {
+      if (Object.values(appliedFilters).some(value => value !== '' && value !== undefined)) {
+        await saveFiltersToStorage(appliedFilters);
+      }
+    };
+    saveFilters();
+  }, [appliedFilters, filtersInitialized]);
 
   // Clear navigation source on component mount (we're now on the feed screen)
   useEffect(() => {
     AsyncStorage.removeItem('navigationSource').catch(() => {});
   }, []);
 
+  // Sync draft filters with applied filters when modal opens
+  useEffect(() => {
+    if (isFilterModalVisible) {
+      setDraftFilters(appliedFilters);
+    }
+  }, [isFilterModalVisible, appliedFilters]);
+
   // Pass debounced filters to the query to prevent constant refetching
   const { data: listings, isLoading, isError } = useQuery({
-    queryKey: ['listings', debouncedAppliedFilters],
+    queryKey,
     queryFn: () => getListings(debouncedAppliedFilters),
     staleTime: 2 * 60 * 1000, // 2 minutes
+    // Only refetch when the query key actually changes (not just object reference)
+    refetchOnWindowFocus: false,
   });
+
+  // Get active filters for display - memoized to update when filters change
+  const activeFilters = useMemo(() => {
+    const activeFilters: string[] = [];
+
+    if (appliedFilters.minPrice && appliedFilters.minPrice.trim() !== '') {
+      activeFilters.push(`Min: $${appliedFilters.minPrice}`);
+    }
+    if (appliedFilters.maxPrice && appliedFilters.maxPrice.trim() !== '') {
+      activeFilters.push(`Max: $${appliedFilters.maxPrice}`);
+    }
+    if (appliedFilters.beds && appliedFilters.beds !== '' && appliedFilters.beds !== '0') {
+      activeFilters.push(`${appliedFilters.beds === '4+' ? '4+ bedrooms' : appliedFilters.beds + ' bedroom'}`);
+    }
+    if (appliedFilters.laundry && appliedFilters.laundry !== '') {
+      const laundryLabels: { [key: string]: string } = {
+        'in-unit': 'In-unit laundry',
+        'on-site': 'On-site laundry',
+        'none': 'No laundry'
+      };
+      activeFilters.push(laundryLabels[appliedFilters.laundry]);
+    }
+    if (appliedFilters.parking === true) {
+      activeFilters.push('Parking available');
+    }
+    if (appliedFilters.pets_allowed === true) {
+      activeFilters.push('Pet friendly');
+    }
+    if (appliedFilters.is_furnished === true) {
+      activeFilters.push('Furnished');
+    }
+    if (appliedFilters.utilities_included === true) {
+      activeFilters.push('Utilities included');
+    }
+    if (appliedFilters.broker_fee_required === false) {
+      activeFilters.push('No broker fee');
+    }
+    if (appliedFilters.neighborhood && appliedFilters.neighborhood.trim()) {
+      const neighborhoods = appliedFilters.neighborhood.split(',').map(n => n.trim()).filter(n => n.length > 0);
+      if (neighborhoods.length === 1) {
+        activeFilters.push(`Neighborhood: ${neighborhoods[0]}`);
+      } else if (neighborhoods.length > 1) {
+        activeFilters.push(`${neighborhoods.length} neighborhoods selected`);
+      }
+    }
+
+    return activeFilters;
+  }, [appliedFilters]);
 
   const handleApplyFilters = () => {
     // Apply the draft filters to the applied filters
@@ -154,72 +217,26 @@ export default function FeedScreen() {
     setFilterModalVisible(false);
   };
 
-  const getActiveFilters = () => {
-    const activeFilters: string[] = [];
-    if (appliedFilters.minPrice || appliedFilters.maxPrice) {
-      activeFilters.push(`$${appliedFilters.minPrice || '0'}-$${appliedFilters.maxPrice || '∞'}`);
-    }
-    if (appliedFilters.beds) {
-      activeFilters.push(`${appliedFilters.beds} ${appliedFilters.beds === '4+' ? t('beds') : t('bed')}`);
-    }
-    if (appliedFilters.laundry) {
-      activeFilters.push(`${t('laundry')}: ${appliedFilters.laundry === 'in-unit' ? t('inUnit') : appliedFilters.laundry === 'on-site' ? t('onSite') : t('none')}`);
-    }
-    if (appliedFilters.parking) activeFilters.push(t('parking'));
-    if (appliedFilters.pets_allowed) activeFilters.push(t('petsAllowed'));
-    if (appliedFilters.is_furnished) activeFilters.push(t('furnished'));
-    if (appliedFilters.utilities_included) activeFilters.push(t('utilitiesIncluded'));
-    if (appliedFilters.broker_fee_required === false) activeFilters.push(t('noBrokerFee'));
-    if (appliedFilters.neighborhood) activeFilters.push(`${t('neighborhood')}: ${appliedFilters.neighborhood}`);
-    if (appliedFilters.nearUniversity) activeFilters.push(`${t('nearUniversity')}: ${appliedFilters.nearUniversity}`);
-    if (appliedFilters.transportDistance) activeFilters.push(`${appliedFilters.transportDistance} ${t('blocksFromTransit')}`);
-    return activeFilters;
+  const handleResetFilters = () => {
+    const resetFilters: FilterState = {
+      minPrice: '',
+      maxPrice: '',
+      beds: '',
+      laundry: '',
+      parking: undefined,
+      pets_allowed: undefined,
+      is_furnished: undefined,
+      utilities_included: undefined,
+      broker_fee_required: undefined,
+      neighborhood: '',
+      nearUniversity: '',
+      transportDistance: '',
+      showAllNeighborhoods: false
+    };
+    setDraftFilters(resetFilters);
+    setAppliedFilters(resetFilters);
   };
 
-  const removeFilter = (filterText: string) => {
-    const newAppliedFilters = { ...appliedFilters };
-    const newDraftFilters = { ...draftFilters };
-
-    if (filterText.includes('$')) {
-      newAppliedFilters.minPrice = '';
-      newAppliedFilters.maxPrice = '';
-      newDraftFilters.minPrice = '';
-      newDraftFilters.maxPrice = '';
-    } else if (filterText.includes(t('bed')) || filterText.includes(t('beds'))) {
-      newAppliedFilters.beds = '';
-      newDraftFilters.beds = '';
-    } else if (filterText.includes(t('laundry'))) {
-      newAppliedFilters.laundry = '';
-      newDraftFilters.laundry = '';
-    } else if (filterText === t('parking')) {
-      newAppliedFilters.parking = undefined;
-      newDraftFilters.parking = undefined;
-    } else if (filterText === t('petsAllowed')) {
-      newAppliedFilters.pets_allowed = undefined;
-      newDraftFilters.pets_allowed = undefined;
-    } else if (filterText === t('furnished')) {
-      newAppliedFilters.is_furnished = undefined;
-      newDraftFilters.is_furnished = undefined;
-    } else if (filterText === t('utilitiesIncluded')) {
-      newAppliedFilters.utilities_included = undefined;
-      newDraftFilters.utilities_included = undefined;
-    } else if (filterText === t('noBrokerFee')) {
-      newAppliedFilters.broker_fee_required = undefined;
-      newDraftFilters.broker_fee_required = undefined;
-    } else if (filterText.includes(t('neighborhood'))) {
-      newAppliedFilters.neighborhood = '';
-      newDraftFilters.neighborhood = '';
-    } else if (filterText.includes(t('nearUniversity'))) {
-      newAppliedFilters.nearUniversity = '';
-      newDraftFilters.nearUniversity = '';
-    } else if (filterText.includes(t('blocksFromTransit'))) {
-      newAppliedFilters.transportDistance = '';
-      newDraftFilters.transportDistance = '';
-    }
-
-    setAppliedFilters(newAppliedFilters);
-    setDraftFilters(newDraftFilters);
-  };
 
   if (isLoading) {
     return <ActivityIndicator size="large" style={styles.center} />;
@@ -250,7 +267,7 @@ export default function FeedScreen() {
               style={[
                 styles.filterButton,
                 { backgroundColor: '#1570ef' },
-                { alignSelf: 'flex-start' } // Ensure button only takes content width
+                { alignSelf: 'flex-start' }
               ]}
               onPress={() => setFilterModalVisible(true)}
             >
@@ -261,7 +278,6 @@ export default function FeedScreen() {
               )}
             </Pressable>
           </View>
-
 
           {/* Right side - Language Selector */}
           <View style={styles.rightSection}>
@@ -279,22 +295,27 @@ export default function FeedScreen() {
         </View>
       </View>
 
-      {/* Applied Filters Summary */}
-      {Object.values(appliedFilters).some(value => value !== '' && value !== undefined) && (
-        <View style={[styles.appliedFiltersSummary, { backgroundColor: colors.surface }]}>
-          <View style={styles.filterIndicators}>
-            {getActiveFilters().map((filter, index) => (
-              <View key={index} style={styles.filterIndicator}>
-                <View style={[styles.bulletPoint, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.filterIndicatorText, { color: colors.textSecondary }]}>{filter}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Scrollable Content */}
+      {/* Scrollable Content with Active Filters */}
       <View style={styles.scrollableContent}>
+        {/* Active Filters Display - Now inside scrollable area */}
+        {activeFilters.length > 0 && (
+          <View style={[styles.activeFiltersSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.activeFiltersTitle, { color: colors.primary }]}>
+              {t('activeFilters')} ({activeFilters.length})
+            </Text>
+            <View style={styles.activeFiltersList}>
+              {activeFilters.map((filter, index) => (
+                <View key={index} style={styles.activeFilterItem}>
+                  <View style={[styles.activeFilterBullet, { backgroundColor: colors.primary }]} />
+                  <Text style={[styles.activeFilterText, { color: colors.text }]}>
+                    {filter}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         <FlatList
           data={listings?.filter(listing => {
             // Basic validation
@@ -318,6 +339,9 @@ export default function FeedScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           bounces={true}
+          ListHeaderComponent={
+            activeFilters.length > 0 ? <View style={{ height: 20 }} /> : null
+          }
         />
       </View>
 
@@ -333,265 +357,27 @@ export default function FeedScreen() {
           backgroundColor: colors.surface,
           shadowColor: colors.shadow,
         }]}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalTitleContainer}>
-              <Ionicons name="filter" size={24} color={colors.primary} />
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('filterListings')}</Text>
-            </View>
-            <Pressable onPress={() => {
-              const resetFilters = {
-                minPrice: '',
-                maxPrice: '',
-                beds: '',
-                laundry: '',
-                parking: undefined,
-                pets_allowed: undefined,
-                is_furnished: undefined,
-                utilities_included: undefined,
-                broker_fee_required: undefined,
-                neighborhood: '',
-                nearUniversity: '',
-                transportDistance: ''
-              };
-              setDraftFilters(resetFilters);
-              setAppliedFilters(resetFilters);
-              // Clear stored filters as well
-              AsyncStorage.removeItem('feedFilters').catch(() => {});
-            }}>
-              <Text style={[styles.resetText, { color: colors.primary }]}>{t('resetAll')}</Text>
-            </Pressable>
-          </View>
-
-          {/* Price Range */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="cash" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('priceRange')}</Text>
-            </View>
-            <View style={styles.priceInputContainer}>
-              <TextInput
-                style={[styles.input, {
-                  color: colors.text,
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  shadowColor: colors.shadow,
-                }]}
-                placeholder={t('minPrice')}
-                placeholderTextColor={colors.textSecondary}
-                value={draftFilters.minPrice}
-                onChangeText={(text) => setDraftFilters(f => ({ ...f, minPrice: text }))}
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-                selectTextOnFocus={true}
-                editable={true}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
-              <TextInput
-                style={[styles.input, {
-                  color: colors.text,
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  shadowColor: colors.shadow,
-                }]}
-                placeholder={t('maxPrice')}
-                placeholderTextColor={colors.textSecondary}
-                value={draftFilters.maxPrice}
-                onChangeText={(text) => setDraftFilters(f => ({ ...f, maxPrice: text }))}
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-                selectTextOnFocus={true}
-                editable={true}
-                autoCorrect={false}
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
-
-          {/* Bedrooms */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="bed" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('bedrooms')}</Text>
-            </View>
-            <View style={styles.chipContainer}>
-              {['1', '2', '3', '4+'].map(num => {
-                const isSelected = draftFilters.beds === num;
-                return (
-                  <Pressable
-                    key={num}
-                    style={[
-                      styles.chip,
-                      isSelected && styles.chipSelected,
-                      {
-                        backgroundColor: isSelected ? '#1570ef' : colors.surface,
-                        borderColor: isSelected ? '#1570ef' : colors.border,
-                        shadowColor: isSelected ? '#1570ef' : colors.shadow,
-                      }
-                    ]}
-                    onPress={() => setDraftFilters(f => ({ ...f, beds: f.beds === num ? '' : num }))}
-                    android_ripple={{ color: '#1570ef30', borderless: false }}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        isSelected && styles.chipTextSelected,
-                        {
-                          color: isSelected ? '#FFFFFF' : colors.text
-                        }
-                      ]}
-                    >
-                      {num} {num !== '4+' ? t('bed') : t('beds')}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-
-
-          {/* Laundry Options */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="shirt" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('laundry')}</Text>
-            </View>
-            <View style={styles.chipContainer}>
-              {[
-                { value: 'in-unit', key: 'inUnit' },
-                { value: 'on-site', key: 'onSite' },
-                { value: 'none', key: 'none' }
-              ].map(({ value, key }) => {
-                const isSelected = draftFilters.laundry === value;
-                return (
-                  <Pressable
-                    key={value}
-                    style={[styles.chip, isSelected && styles.chipSelected, {
-                      backgroundColor: isSelected ? '#1570ef' : colors.surface,
-                      borderColor: isSelected ? '#1570ef' : colors.border,
-                      shadowColor: isSelected ? '#1570ef' : colors.shadow,
-                    }]}
-                    onPress={() => setDraftFilters(f => ({ ...f, laundry: f.laundry === value ? '' : value }))}
-                    android_ripple={{ color: '#1570ef30', borderless: false }}
-                  >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected, {
-                      color: isSelected ? '#FFFFFF' : colors.text
-                    }]}>
-                      {t(key as TranslationKey)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Amenities */}
-          <View style={styles.filterSection}>
-            <View style={styles.filterSectionHeader}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-              <Text style={[styles.filterSectionTitle, { color: colors.text }]}>{t('mustHaves')}</Text>
-            </View>
-            <View style={styles.chipContainer}>
-              <Pressable
-                style={[styles.chip, draftFilters.parking && styles.chipSelected, {
-                  backgroundColor: draftFilters.parking ? '#1570ef' : colors.surface,
-                  borderColor: draftFilters.parking ? '#1570ef' : colors.border,
-                  shadowColor: draftFilters.parking ? '#1570ef' : colors.shadow,
-                }]}
-                onPress={() => setDraftFilters(f => ({ ...f, parking: !f.parking }))}
-                android_ripple={{ color: '#1570ef30', borderless: false }}
-              >
-                <Text style={[styles.chipText, draftFilters.parking && styles.chipTextSelected, {
-                  color: draftFilters.parking ? '#FFFFFF' : colors.text,
-                  fontWeight: draftFilters.parking ? '700' : '500',
-                  fontSize: draftFilters.parking ? 15 : 14,
-                }]}>
-                  {t('parking')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.chip, draftFilters.pets_allowed && styles.chipSelected, {
-                  backgroundColor: draftFilters.pets_allowed ? '#1570ef' : colors.surface,
-                  borderColor: draftFilters.pets_allowed ? '#1570ef' : colors.border,
-                  shadowColor: draftFilters.pets_allowed ? '#1570ef' : colors.shadow,
-                }]}
-                onPress={() => setDraftFilters(f => ({ ...f, pets_allowed: !f.pets_allowed }))}
-                android_ripple={{ color: '#1570ef30', borderless: false }}
-              >
-                <Text style={[styles.chipText, draftFilters.pets_allowed && styles.chipTextSelected, {
-                  color: draftFilters.pets_allowed ? '#FFFFFF' : colors.text,
-                  fontWeight: draftFilters.pets_allowed ? '700' : '500',
-                  fontSize: draftFilters.pets_allowed ? 15 : 14,
-                }]}>
-                  {t('petsAllowed')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.chip, draftFilters.is_furnished && styles.chipSelected, {
-                  backgroundColor: draftFilters.is_furnished ? '#1570ef' : colors.surface,
-                  borderColor: draftFilters.is_furnished ? '#1570ef' : colors.border,
-                  shadowColor: draftFilters.is_furnished ? '#1570ef' : colors.shadow,
-                }]}
-                onPress={() => setDraftFilters(f => ({ ...f, is_furnished: !f.is_furnished }))}
-                android_ripple={{ color: '#1570ef30', borderless: false }}
-              >
-                <Text style={[styles.chipText, draftFilters.is_furnished && styles.chipTextSelected, {
-                  color: draftFilters.is_furnished ? '#FFFFFF' : colors.text,
-                  fontWeight: draftFilters.is_furnished ? '700' : '500',
-                  fontSize: draftFilters.is_furnished ? 15 : 14,
-                }]}>
-                  {t('furnished')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.chip, draftFilters.utilities_included && styles.chipSelected, {
-                  backgroundColor: draftFilters.utilities_included ? '#1570ef' : colors.surface,
-                  borderColor: draftFilters.utilities_included ? '#1570ef' : colors.border,
-                  shadowColor: draftFilters.utilities_included ? '#1570ef' : colors.shadow,
-                }]}
-                onPress={() => setDraftFilters(f => ({ ...f, utilities_included: !f.utilities_included }))}
-                android_ripple={{ color: '#1570ef30', borderless: false }}
-              >
-                <Text style={[styles.chipText, draftFilters.utilities_included && styles.chipTextSelected, {
-                  color: draftFilters.utilities_included ? '#FFFFFF' : colors.text,
-                  fontWeight: draftFilters.utilities_included ? '700' : '500',
-                  fontSize: draftFilters.utilities_included ? 15 : 14,
-                }]}>
-                  {t('utilitiesIncluded')}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.chip, draftFilters.broker_fee_required === false && styles.chipSelected, {
-                  backgroundColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.surface,
-                  borderColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.border,
-                  shadowColor: draftFilters.broker_fee_required === false ? '#1570ef' : colors.shadow,
-                }]}
-                onPress={() => setDraftFilters(f => ({ ...f, broker_fee_required: f.broker_fee_required === false ? undefined : false }))}
-                android_ripple={{ color: '#1570ef30', borderless: false }}
-              >
-                <Text style={[styles.chipText, draftFilters.broker_fee_required === false && styles.chipTextSelected, {
-                  color: draftFilters.broker_fee_required === false ? '#FFFFFF' : colors.text,
-                  fontWeight: draftFilters.broker_fee_required === false ? '700' : '500',
-                  fontSize: draftFilters.broker_fee_required === false ? 15 : 14,
-                }]}>
-                  {t('noBrokerFee')}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-
-
-
-
-          <Pressable style={[styles.applyButton, {
-            backgroundColor: colors.primary,
-            shadowColor: colors.primary,
-          }]} onPress={handleApplyFilters}>
-            <Ionicons name="checkmark" size={18} color="white" />
-            <Text style={styles.applyButtonText}>{t('applyFilters')}</Text>
+          {/* Close button at top right */}
+          <Pressable
+            style={styles.closeButton}
+            onPress={() => setFilterModalVisible(false)}
+          >
+            <Ionicons name="close" size={24} color={colors.text} />
           </Pressable>
+
+          <Filters
+            filters={draftFilters}
+            onFiltersChange={setDraftFilters}
+            onApply={handleApplyFilters}
+            onReset={handleResetFilters}
+            isMapView={false}
+            showNeighborhoods={true}
+          />
+
+
+
+
+
         </View>
       </Modal>
 
@@ -624,7 +410,6 @@ export default function FeedScreen() {
                   currentLanguage.code === language.code && { backgroundColor: colors.primary + '20' }
                 ]}
                 onPress={() => {
-                  console.log('Setting language to:', language.name);
                   setLanguage(language);
                   setLanguageModalVisible(false);
                 }}
@@ -688,7 +473,7 @@ const styles = StyleSheet.create({
     filterBarContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between', // Distribute items with space between them
+      justifyContent: 'space-between',
     },
     leftSection: {
       flexDirection: 'row',
@@ -697,18 +482,17 @@ const styles = StyleSheet.create({
     rightSection: {
       flexDirection: 'row',
       alignItems: 'center',
-      alignSelf: 'flex-start', // Ensure button only takes content width
-      // marginLeft: 'auto', // Removed as justifyContent: 'space-between' handles spacing
+      alignSelf: 'flex-start',
     },
     filterButton: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,
       paddingVertical: 10,
-      borderRadius: 25, // More rounded, pill-shaped
+      borderRadius: 25,
       gap: 8,
-      elevation: 4, // Android shadow
-      shadowColor: '#000', // iOS shadow
+      elevation: 4,
+      shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.2,
       shadowRadius: 3,
@@ -725,56 +509,9 @@ const styles = StyleSheet.create({
       backgroundColor: 'white',
       marginLeft: 4,
     },
-    activeFiltersScroll: {
-      flex: 1,
-      flexGrow: 1, // Ensure it takes up available space
-    },
-    activeFilterChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 24,
-      marginRight: 10,
-      gap: 8,
-      // Enhanced iOS-style shadows
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 4,
-      // Subtle border for definition
-      borderWidth: 0.5,
-      // Make it feel premium
-      minHeight: 36,
-      justifyContent: 'center',
-    },
-    activeFilterText: {
-      fontSize: 13,
-      fontWeight: '700',
-      letterSpacing: 0.25,
-      // Add subtle text shadow for iOS
-      textShadowColor: 'rgba(0, 0, 0, 0.2)',
-      textShadowOffset: { width: 0, height: 0.5 },
-      textShadowRadius: 1,
-    },
-    removeFilterButton: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginLeft: 4,
-      // Enhanced button styling
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 2,
-      elevation: 2,
-    },
     modalBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.4)',
-      // Add subtle blur effect for iOS
-      backdropFilter: 'blur(8px)',
     },
     modalContent: {
       padding: 16,
@@ -784,6 +521,7 @@ const styles = StyleSheet.create({
       bottom: 0,
       left: 0,
       right: 0,
+      maxHeight: '80%',
       // iOS-style modal shadows
       shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.15,
@@ -793,89 +531,6 @@ const styles = StyleSheet.create({
       borderWidth: 0.5,
       borderTopWidth: 0,
       borderColor: 'rgba(0,0,0,0.1)',
-    },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    modalTitleContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    modalTitle: { fontSize: 24, fontWeight: 'bold' },
-    resetText: { color: '#EF4444', fontSize: 16, fontWeight: '600' },
-    filterSection: { marginBottom: 24, paddingVertical: 8 },
-    filterSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-    filterSectionTitle: { fontSize: 16, fontWeight: '600' },
-    priceInputContainer: { flexDirection: 'row', gap: 12 },
-    inputContainer: { marginBottom: 16 },
-    input: {
-      flex: 1,
-      padding: 16,
-      borderRadius: 12,
-      fontSize: 16,
-      // Theme-aware styling
-      borderWidth: 1,
-      borderColor: 'rgba(0,0,0,0.1)',
-      // Enhanced visual appeal
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    inputLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      marginBottom: 12,
-      // Color will be set inline based on theme
-    },
-    chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      borderRadius: 24,
-      borderWidth: 1,
-      // Modern styling
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-      elevation: 2,
-      // Smooth transitions
-      transform: [{ scale: 1 }],
-    },
-    chipSelected: {
-      // Enhanced selected state with consistent blue styling
-      borderColor: '#1570ef',
-      borderWidth: 2,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    chipText: {
-      fontSize: 14,
-      fontWeight: '500',
-      letterSpacing: 0.1,
-    },
-    chipTextSelected: {
-      color: 'white',
-      fontWeight: '600',
-      letterSpacing: 0.2,
-    },
-    applyButton: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      borderRadius: 16,
-      alignItems: 'center',
-      marginTop: 24,
-      flexDirection: 'row',
-      gap: 8,
-      // Modern button styling
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 8,
-      borderWidth: 0,
-    },
-    applyButtonText: {
-      color: 'white',
-      fontSize: 16,
-      fontWeight: '700',
-      letterSpacing: 0.5,
     },
     languageSelector: {
       flexDirection: 'row',
@@ -947,43 +602,54 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontWeight: '600',
     },
-    appliedFiltersSummary: {
-      paddingHorizontal: 20,
+    closeButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      zIndex: 1,
+      padding: 8,
+      borderRadius: 20,
+      backgroundColor: 'rgba(0,0,0,0.05)',
+    },
+    activeFiltersSection: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 8,
+      paddingHorizontal: 16,
       paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: '#E5E7EB',
-      marginHorizontal: 0,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#E5E7EB',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
     },
-    summaryHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 12,
-    },
-    summaryTitle: {
-      fontSize: 16,
-      fontWeight: '600',
+    activeFiltersTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 10,
+      textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
-    filterIndicators: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 16,
+    activeFiltersList: {
+      gap: 8,
     },
-    filterIndicator: {
+    activeFilterItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 10,
     },
-    bulletPoint: {
+    activeFilterBullet: {
       width: 6,
       height: 6,
       borderRadius: 3,
-      // Color will be set inline based on theme
     },
-    filterIndicatorText: {
+    activeFilterText: {
       fontSize: 14,
+      flex: 1,
+      lineHeight: 18,
       fontWeight: '500',
-      letterSpacing: 0.25,
     },
 });

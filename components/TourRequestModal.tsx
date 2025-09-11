@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Modal, View, Text, Pressable, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/theme-provider';
 import { themeColors } from '@/constants/theme';
 import { useLanguage } from '@/context/language-provider';
-import { CalendarService } from '@/lib/calendarService';
+// import { CalendarService } from '@/lib/calendarService';
+import { getListingById } from '@/lib/api';
 
 interface TourRequestSummaryModalProps {
   isVisible: boolean;
   onClose: () => void;
   tourDetails: {
+    listingIds: string[]; // Changed from single listing to multiple
     dates: string[];
     timeSlots: { time: string; priority: number; date: string }[];
     notes: string;
@@ -18,52 +20,45 @@ interface TourRequestSummaryModalProps {
   };
 }
 
+// Helper function to format time from 24-hour to 12-hour format
+const formatTimeTo12Hour = (time24: string): string => {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12; // Convert 0 to 12 for midnight
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
 export default function TourRequestSummaryModal({ isVisible, onClose, tourDetails }: TourRequestSummaryModalProps) {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const colors = themeColors[theme];
-  const [calendarEventsAdded, setCalendarEventsAdded] = useState<Set<string>>(new Set());
+  // const [calendarEventsAdded, setCalendarEventsAdded] = useState<Set<string>>(new Set());
+  const [listingsData, setListingsData] = useState<any[]>([]);
+  const [isLoadingListings, setIsLoadingListings] = useState(false);
 
   // Debug logging
   console.log('TourRequestSummaryModal render - isVisible:', isVisible, 'tourDetails:', tourDetails);
 
-  const addTourToCalendar = async (date: string, time: string, priority: number) => {
-    try {
-      const hasPermission = await CalendarService.requestPermissions();
-      if (!hasPermission) {
-        Alert.alert(
-          'Calendar Permission Required',
-          'Please enable calendar permissions to add tours to your calendar.',
-          [{ text: 'OK' }]
-        );
-        return;
+  // Fetch listing data when modal is visible and listing IDs change
+  useEffect(() => {
+    const fetchListingsData = async () => {
+      if (isVisible && tourDetails.listingIds && tourDetails.listingIds.length > 0) {
+        setIsLoadingListings(true);
+        try {
+          const listingsPromises = tourDetails.listingIds.map(id => getListingById(id));
+          const listings = await Promise.all(listingsPromises);
+          setListingsData(listings.filter(listing => listing !== null));
+        } catch (error) {
+          console.error('Error fetching listings data:', error);
+          setListingsData([]);
+        } finally {
+          setIsLoadingListings(false);
+        }
       }
+    };
 
-      // Create calendar event data
-      const eventData = CalendarService.createTourEventData(
-        'Property Address - Contact ZVI for details',
-        date,
-        time,
-        tourDetails.phoneNumber,
-        'Tour request submitted. Waiting for confirmation.'
-      );
-
-      const eventId = await CalendarService.addTourEvent(eventData);
-      if (eventId) {
-        setCalendarEventsAdded(prev => new Set(prev).add(`${date}-${time}`));
-        Alert.alert(
-          'Added to Calendar',
-          `Tour scheduled for ${date} at ${time} has been added to your calendar.`,
-          [{ text: 'Great!' }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to add tour to calendar. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error adding tour to calendar:', error);
-      Alert.alert('Error', 'Failed to add tour to calendar.');
-    }
-  };
+    fetchListingsData();
+  }, [isVisible, tourDetails.listingIds]);
 
   // Group time slots by date for better organization and determine date priorities
   const groupedSlotsByDate: { [date: string]: { time: string; priority: number }[] } = {};
@@ -127,7 +122,7 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
         <View style={styles.modalHeader}>
           <View style={styles.modalTitleContainer}>
             <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Tour Request Confirmed!</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('tourRequestConfirmed')}</Text>
           </View>
           <Pressable onPress={() => {
             onClose();
@@ -136,22 +131,81 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={[styles.confirmationMessage, { color: colors.textSecondary }]}>
-            🎉 Your tour request has been successfully submitted! We'll contact you within 24 hours to confirm availability.
-          </Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.contentContainer}>
+            <Text style={[styles.confirmationMessage, { color: colors.textSecondary }]}>
+              {t('tourRequestSuccessMessage')}
+            </Text>
           <View style={styles.nextStepsBox}>
             <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             <Text style={[styles.nextStepsText, { color: colors.text }]}>
-              <Text style={{ fontWeight: '600' }}>What happens next:</Text>{"\n"}
-              • We'll review your preferred times and confirm availability{"\n"}
-              • Confirmed tours will be automatically added to your calendar{"\n"}
-              • You'll receive a confirmation call/text with final details
+              <Text style={{ fontWeight: '600' }}>{t('whatHappensNext')}</Text>{"\n"}
+              • {t('whatHappensNext1')}{"\n"}
+              • {t('whatHappensNext2')}{"\n"}
+              • {t('whatHappensNext3')}
             </Text>
           </View>
 
           <View style={[styles.summaryCard, { backgroundColor: colors.background }]}>
-            <Text style={[styles.summaryTitle, { color: colors.text }]}>📅 Your Selected Schedule</Text>
+            <Text style={[styles.summaryTitle, { color: colors.text }]}>{t('yourSelectedSchedule')}</Text>
+
+            {/* Display selected listings */}
+            {listingsData.length > 0 && (
+              <View style={styles.listingsSummary}>
+                <View style={styles.listingsSummaryHeader}>
+                  <Ionicons name="home" size={20} color={colors.primary} />
+                  <Text style={[styles.summaryLabel, { color: colors.text }]}>
+                    {t('selectedProperties')} ({listingsData.length})
+                  </Text>
+                </View>
+                {isLoadingListings ? (
+                  <View style={styles.loadingState}>
+                    <Ionicons name="hourglass" size={20} color={colors.textSecondary} />
+                    <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('loadingPropertyDetails')}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.listingsList}>
+                    {listingsData.map((listing, index) => (
+                      <View key={listing?.id || index} style={[
+                        styles.listingSummaryItem,
+                        { backgroundColor: colors.background, borderColor: colors.border },
+                        index === 0 && { borderColor: colors.primary, borderWidth: 2 } // Highlight main listing
+                      ]}>
+                        <View style={styles.listingHeader}>
+                          <View style={styles.listingNumberBadge}>
+                            <Text style={[styles.listingNumber, { color: index === 0 ? colors.primary : colors.textSecondary }]}>
+                              {index + 1}
+                            </Text>
+                          </View>
+                          {index === 0 && (
+                            <View style={[styles.mainListingTag, { backgroundColor: colors.primary }]}>
+                              <Text style={styles.mainListingTagText}>{t('mainTour')}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.listingSummaryTitle, { color: colors.text }]}>
+                          {listing?.title || t('property')}
+                        </Text>
+                        <View style={styles.listingDetailsRow}>
+                          <Text style={[styles.listingSummaryDetails, { color: colors.textSecondary }]}>
+                            💰 ${listing?.price_per_month || t('priceNotAvailable')}{t('pricePerMonth')}
+                          </Text>
+                          <Text style={[styles.listingSummaryDetails, { color: colors.textSecondary }]}>
+                            🛏️ {listing?.bedrooms || 0} {t('bed')} • {listing?.bathrooms || 0} {t('bath')}
+                          </Text>
+                        </View>
+                        <Text style={[styles.listingSummaryLocation, { color: colors.textMuted }]}>
+                          📍 {listing?.neighborhood || t('locationNotAvailable')}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
 
             {sortedDates.map(date => (
               <View key={date} style={[styles.dateBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -161,52 +215,53 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
                 </View>
 
                 <View style={styles.timeSlotsContainer}>
-                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Preferred Times:</Text>
+                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>{t('preferredTimes')}</Text>
                   <View style={styles.timeSlotsList}>
                     {tourDetails.timeSlots
                       .filter(slot => slot.date === date) // Filter slots for the current date
                       .sort((a, b) => a.priority - b.priority) // Sort by global priority
                       .map((slot, index) => {
                         const isTopChoice = slot.priority === 1; // Check against global priority
-                        const eventKey = `${date}-${slot.time}`;
-                        const isAddedToCalendar = calendarEventsAdded.has(eventKey);
+                        
+                        // Add time emoji based on the time
+                        const getTimeEmoji = (time: string) => {
+                          const hour = parseInt(time.split(':')[0]);
+                          if (hour < 10) return '🌅';
+                          if (hour < 12) return '☕';
+                          if (hour < 14) return '🍽️';
+                          if (hour < 16) return '🌞';
+                          if (hour < 18) return '🌆';
+                          return '🌇';
+                        };
 
                         return (
                           <View key={index} style={[styles.timeSlotItem, {
                             backgroundColor: isTopChoice ? '#FEF3C7' : colors.background,
                             borderColor: isTopChoice ? '#F59E0B' : colors.border
                           }]}>
-                            <View style={styles.priorityIndicator}>
-                              {isTopChoice && <Ionicons name="star" size={12} color="#F59E0B" />}
-                              <Text style={[styles.priorityNumber, {
-                                color: isTopChoice ? '#F59E0B' : colors.textMuted
-                              }]}>
-                                {slot.priority}
-                              </Text>
-                            </View>
-                            <View style={styles.timeSlotContent}>
-                              <Text style={[styles.timeSlotText, {
-                                color: isTopChoice ? colors.text : colors.textSecondary,
-                                fontWeight: isTopChoice ? '600' : '400'
-                              }]}>
-                                {slot.time}
-                              </Text>
-                              <Pressable
-                                style={[styles.calendarButton, {
-                                  backgroundColor: isAddedToCalendar ? '#10B981' : '#1570ef'
-                                }]}
-                                onPress={() => addTourToCalendar(date, slot.time, slot.priority)}
-                              >
-                                <Ionicons
-                                  name={isAddedToCalendar ? "checkmark" : "calendar"}
-                                  size={14}
-                                  color="white"
-                                />
-                                <Text style={styles.calendarButtonText}>
-                                  {isAddedToCalendar ? 'Added' : 'Add to Calendar'}
+                            <View style={[styles.priorityIndicator, {
+                              backgroundColor: isTopChoice ? '#F59E0B' : colors.border,
+                            }]}>
+                              {isTopChoice ? (
+                                <Ionicons name="star" size={12} color="white" />
+                              ) : (
+                                <Text style={[styles.priorityNumber, {
+                                  color: colors.textSecondary
+                                }]}>
+                                  {slot.priority}
                                 </Text>
-                              </Pressable>
+                              )}
                             </View>
+                            
+                            <Text style={[styles.timeSlotText, {
+                              color: isTopChoice ? colors.text : colors.textSecondary,
+                              fontWeight: isTopChoice ? '600' : '400',
+                            }]}>
+                              {getTimeEmoji(slot.time)} {formatTimeTo12Hour(slot.time)}
+                            </Text>
+                            {!isTopChoice && (
+                              <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+                            )}
                           </View>
                         );
                       })}
@@ -233,16 +288,20 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-              We'll review your preferences and contact you within 24 hours to confirm the best available time slot.
+              {t('reviewPreferencesMessage')}
             </Text>
+          </View>
           </View>
         </ScrollView>
 
-        <Pressable style={[styles.okButton, { backgroundColor: colors.primary }]} onPress={() => {
-          onClose();
-        }}>
-          <Text style={styles.okButtonText}>Got it, thanks!</Text>
-        </Pressable>
+        {/* Fixed OK Button */}
+        <View style={styles.okButtonContainer}>
+          <Pressable style={[styles.okButton, { backgroundColor: colors.primary }]} onPress={() => {
+            onClose();
+          }}>
+            <Text style={styles.okButtonText}>{t('gotItThanks')}</Text>
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -256,21 +315,30 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 20,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    padding: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     width: '100%',
-    maxHeight: '85%', // Adjusted for summary to take less space than main modal
+    maxHeight: '90%',
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 16,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   modalTitleContainer: {
     flexDirection: 'row',
@@ -319,15 +387,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dateBlock: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
   },
   dateHeader: {
     flexDirection: 'row',
@@ -355,16 +423,25 @@ const styles = StyleSheet.create({
   timeSlotItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   priorityIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
   priorityNumber: {
     fontSize: 12,
@@ -372,6 +449,7 @@ const styles = StyleSheet.create({
   },
   timeSlotText: {
     fontSize: 14,
+    fontWeight: '500',
   },
   infoCard: {
     flexDirection: 'row',
@@ -390,12 +468,40 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     flex: 1,
   },
-  okButton: {
-    paddingVertical: 14,
+  scrollContent: {
+    paddingBottom: 120, // Extra space for the fixed OK button
+  },
+  contentContainer: {
     paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 20,
+  },
+  okButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  okButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     alignItems: 'center',
-    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   okButtonText: {
     color: 'white',
@@ -446,5 +552,90 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 10,
     fontWeight: '600',
+  },
+  // Multiple listings summary styles
+  listingsSummary: {
+    marginBottom: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  listingSummaryItem: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  listingSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listingSummaryDetails: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  listingSummaryLocation: {
+    fontSize: 11,
+  },
+  // Enhanced Listings Display Styles
+  listingsSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  listingsList: {
+    gap: 12,
+  },
+  listingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  listingNumberBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listingNumber: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mainListingTag: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mainListingTagText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  listingDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
   },
 });

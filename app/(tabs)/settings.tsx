@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage, LANGUAGES, TranslationKey } from '@/context/language-provider';
 import { Stack, useRouter } from 'expo-router';
 import { deleteUserAccount, checkAccountDeletionEligibility } from '@/lib/api';
+import { Listing } from '@/components/listingcard';
 
 // A simple function to get the current user's profile
 const getProfile = async (userId: string) => {
@@ -43,7 +44,36 @@ const getTourRequests = async (userId: string) => {
     .order('created_at', { ascending: false })
     .limit(10);
   if (error) throw new Error(error.message);
-  return data || [];
+
+  // For each tour request, fetch additional listings if they exist
+  const tourRequestsWithAllListings = await Promise.all(
+    (data || []).map(async (tour) => {
+      const allListingIds = [tour.listing_id];
+
+      // Add additional listing IDs if they exist
+      if (tour.additional_listing_ids && Array.isArray(tour.additional_listing_ids)) {
+        allListingIds.push(...tour.additional_listing_ids);
+      }
+
+      // Fetch all listings for this tour request
+      const { data: allListings, error: listingsError } = await supabase
+        .from('listings')
+        .select('id, title, location_address, price_per_month, bedrooms, bathrooms, property_type, image_urls, university_proximity_minutes, nearest_university, is_active')
+        .in('id', allListingIds);
+
+      if (listingsError) {
+        console.error('Error fetching additional listings:', listingsError);
+        return tour; // Return original tour data if additional listings fail to load
+      }
+
+      return {
+        ...tour,
+        all_listings: allListings || []
+      };
+    })
+  );
+
+  return tourRequestsWithAllListings;
 };
 
 export default function SettingsScreen() {
@@ -73,12 +103,12 @@ export default function SettingsScreen() {
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      Alert.alert("Error signing out", error.message);
+      Alert.alert(t('errorSigningOut'), error.message);
     }
   };
 
   const handleHelp = () => {
-    Alert.alert("Help & Support", "Contact us at support@yourapp.com for assistance.");
+    Alert.alert(t('helpSupport'), t('contactSupportMessage'));
   };
 
   const handleDeleteAccount = async () => {
@@ -95,7 +125,7 @@ export default function SettingsScreen() {
       const eligibility = await checkAccountDeletionEligibility(session.user.id);
       
       if (!eligibility.canDelete) {
-        Alert.alert('Cannot Delete Account', eligibility.warnings.join('\n'));
+        Alert.alert(t('cannotDeleteAccount'), eligibility.warnings.join('\n'));
         setShowDeleteModal(false);
         return;
       }
@@ -103,11 +133,11 @@ export default function SettingsScreen() {
       // Show warnings if any
       if (eligibility.warnings.length > 0) {
         Alert.alert(
-          'Account Deletion Warning',
+          t('accountDeletionWarning'),
           eligibility.warnings.join('\n') + '\n\nAre you sure you want to continue?',
           [
-            { text: 'Cancel', style: 'cancel', onPress: () => setShowDeleteModal(false) },
-            { text: 'Continue', style: 'destructive', onPress: () => {
+            { text: t('cancel'), style: 'cancel', onPress: () => setShowDeleteModal(false) },
+            { text: t('continue'), style: 'destructive', onPress: () => {
               // Check if user signed in with email (needs password) or OAuth
               const isEmailUser = session?.user?.email && !session?.user?.app_metadata?.provider;
               if (isEmailUser) {
@@ -128,7 +158,7 @@ export default function SettingsScreen() {
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Unable to check account status. Please try again.');
+      Alert.alert(t('error'), error.message || t('unableToCheckAccountStatus'));
       setShowDeleteModal(false);
     }
   };
@@ -148,8 +178,8 @@ export default function SettingsScreen() {
       
       // Success - user will be signed out automatically by the API
       Alert.alert(
-        'Account Deleted',
-        'Your account has been successfully deleted. All your data has been removed.',
+        t('accountDeleted'),
+        t('accountDeletedMessage'),
         [{ text: 'OK', onPress: () => {
           setShowDeleteModal(false);
           setDeletePassword('');
@@ -158,7 +188,7 @@ export default function SettingsScreen() {
         }}]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+      Alert.alert(t('error'), error.message || t('failedToDeleteAccount'));
       setDeleteStep(deletePassword ? 'password' : 'confirmation');
     } finally {
       setIsDeleting(false);
@@ -332,31 +362,51 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
 
-                {/* Property Information Card */}
-                {tour.listings && (
-                  <View style={[styles.propertyCard, { backgroundColor: colors.background }]}>
-                    <View style={styles.propertyHeader}>
-                      <Text style={[styles.tourPropertyTitle, { color: colors.text }]}>
-                        {tour.listings.title}
-                      </Text>
-                      <Text style={[styles.propertyPrice, { color: colors.primary }]}>
-                        ${tour.listings.price_per_month?.toLocaleString()}/mo
-                      </Text>
-                    </View>
-
-                    <Text style={[styles.tourAddress, { color: colors.textSecondary }]}>
-                      📍 {tour.listings.location_address}
+                {/* Property Information Cards - Multiple Listings */}
+                {tour.all_listings && tour.all_listings.length > 0 && (
+                  <View style={styles.multiplePropertiesContainer}>
+                    <Text style={[styles.propertiesCount, { color: colors.textSecondary }]}>
+                      📋 {tour.all_listings.length} {tour.all_listings.length === 1 ? 'Property' : 'Properties'}
                     </Text>
+                    <View style={styles.propertiesList}>
+                      {tour.all_listings.map((listing: Listing, listingIndex: number) => (
+                        <View key={listing.id} style={[
+                          styles.propertyCard,
+                          { backgroundColor: colors.background },
+                          listingIndex === 0 && { borderColor: colors.primary, borderWidth: 2 } // Highlight main listing
+                        ]}>
+                          <View style={styles.propertyHeader}>
+                            <View style={styles.propertyTitleRow}>
+                              {listingIndex === 0 && (
+                                <View style={[styles.mainListingBadge, { backgroundColor: colors.primary }]}>
+                                  <Text style={styles.mainListingBadgeText}>Main</Text>
+                                </View>
+                              )}
+                              <Text style={[styles.tourPropertyTitle, { color: colors.text }]}>
+                                {listing.title}
+                              </Text>
+                            </View>
+                            <Text style={[styles.propertyPrice, { color: colors.primary }]}>
+                              ${listing.price_per_month?.toLocaleString()}/mo
+                            </Text>
+                          </View>
 
-                    <View style={styles.propertyDetails}>
-                      <Text style={[styles.propertyDetail, { color: colors.textMuted }]}>
-                        🏠 {tour.listings.property_type} • {tour.listings.bedrooms} bed • {tour.listings.bathrooms} bath
-                      </Text>
-                      {tour.listings.university_proximity_minutes && (
-                        <Text style={[styles.propertyDetail, { color: colors.textMuted }]}>
-                          🎓 {tour.listings.university_proximity_minutes} min walk to {tour.listings.nearest_university}
-                        </Text>
-                      )}
+                          <Text style={[styles.tourAddress, { color: colors.textSecondary }]}>
+                            📍 {listing.location_address}
+                          </Text>
+
+                          <View style={styles.propertyDetails}>
+                            <Text style={[styles.propertyDetail, { color: colors.textMuted }]}>
+                              🏠 {listing.property_type} • {listing.bedrooms} bed • {listing.bathrooms} bath
+                            </Text>
+                            {listing.university_proximity_minutes && (
+                              <Text style={[styles.propertyDetail, { color: colors.textMuted }]}>
+                                🎓 {listing.university_proximity_minutes} min walk to {listing.nearest_university}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      ))}
                     </View>
                   </View>
                 )}
@@ -419,8 +469,14 @@ export default function SettingsScreen() {
         animationType="fade"
         onRequestClose={() => setShowLanguageModal(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowLanguageModal(false)} />
-        <View style={[styles.languageModal, { backgroundColor: colors.surface }]}>
+        <View style={[styles.modalOverlay, {
+          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)'
+        }]}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowLanguageModal(false)}
+          />
+          <View style={[styles.languageModal, { backgroundColor: colors.surface }]}>
           <Text style={[styles.languageModalTitle, { color: colors.text }]}>
             {t('selectLanguage')}
           </Text>
@@ -457,8 +513,9 @@ export default function SettingsScreen() {
             style={[styles.languageCloseButton, { backgroundColor: colors.primary }]}
             onPress={() => setShowLanguageModal(false)}
           >
-            <Text style={styles.languageCloseText}>{t('done')}</Text>
+            <Text style={[styles.languageCloseText, { color: 'white' }]}>{t('done')}</Text>
           </Pressable>
+          </View>
         </View>
       </Modal>
 
@@ -475,20 +532,23 @@ export default function SettingsScreen() {
           }
         }}
       >
-        <Pressable 
-          style={styles.modalBackdrop} 
-          onPress={() => {
-            if (!isDeleting) {
-              setShowDeleteModal(false);
-              setDeletePassword('');
-              setDeleteStep('confirmation');
-            }
-          }} 
-        />
-        <View style={[styles.deleteModal, { backgroundColor: colors.surface }]}>
+        <View style={[styles.modalOverlay, {
+          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)'
+        }]}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => {
+              if (!isDeleting) {
+                setShowDeleteModal(false);
+                setDeletePassword('');
+                setDeleteStep('confirmation');
+              }
+            }}
+          />
+          <View style={[styles.deleteModal, { backgroundColor: colors.surface }]}>
           {deleteStep === 'confirmation' && (
             <>
-              <View style={styles.deleteModalHeader}>
+              <View style={[styles.deleteModalHeader, { borderBottomColor: colors.border }]}>
                 <Ionicons name="warning" size={48} color={colors.error} />
                 <Text style={[styles.deleteModalTitle, { color: colors.text }]}>
                   Delete Account
@@ -497,38 +557,38 @@ export default function SettingsScreen() {
                   This action cannot be undone. All your data will be permanently deleted.
                 </Text>
               </View>
-              
-              <View style={styles.deleteModalWarnings}>
-                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+
+              <View style={[styles.deleteModalWarnings, { backgroundColor: colors.error + '10', borderLeftColor: colors.error, borderColor: colors.error + '20' }]}>
+                <Text style={[styles.warningText, { color: colors.error }]}>
                   • All saved listings will be removed
                 </Text>
-                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                <Text style={[styles.warningText, { color: colors.error }]}>
                   • Tour requests will be cancelled
                 </Text>
-                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                <Text style={[styles.warningText, { color: colors.error }]}>
                   • Profile information will be deleted
                 </Text>
-                <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+                <Text style={[styles.warningText, { color: colors.error }]}>
                   • This action is irreversible
                 </Text>
               </View>
 
               <View style={styles.deleteModalButtons}>
                 <Pressable
-                  style={[styles.deleteModalButton, { backgroundColor: colors.border }]}
+                  style={[styles.deleteModalButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }]}
                   onPress={() => {
                     setShowDeleteModal(false);
                     setDeletePassword('');
                     setDeleteStep('confirmation');
                   }}
                 >
-                  <Text style={[styles.deleteModalButtonText, { color: colors.text }]}>Cancel</Text>
+                  <Text style={[styles.deleteModalButtonText, { color: colors.text }]}>cancel</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.deleteModalButton, { backgroundColor: colors.error }]}
                   onPress={proceedToPasswordStep}
                 >
-                  <Text style={[styles.deleteModalButtonText, { color: 'white' }]}>Continue</Text>
+                  <Text style={[styles.deleteModalButtonText, { color: 'white' }]}>continue</Text>
                 </Pressable>
               </View>
             </>
@@ -536,7 +596,7 @@ export default function SettingsScreen() {
 
           {deleteStep === 'password' && (
             <>
-              <View style={styles.deleteModalHeader}>
+              <View style={[styles.deleteModalHeader, { borderBottomColor: colors.border }]}>
                 <Ionicons name="lock-closed" size={48} color={colors.error} />
                 <Text style={[styles.deleteModalTitle, { color: colors.text }]}>
                   Confirm Password
@@ -547,7 +607,7 @@ export default function SettingsScreen() {
               </View>
               
               <TextInput
-                style={[styles.passwordInput, { 
+                style={[styles.passwordInput, {
                   backgroundColor: colors.background,
                   borderColor: colors.border,
                   color: colors.text
@@ -562,15 +622,15 @@ export default function SettingsScreen() {
 
               <View style={styles.deleteModalButtons}>
                 <Pressable
-                  style={[styles.deleteModalButton, { backgroundColor: colors.border }]}
+                  style={[styles.deleteModalButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }]}
                   onPress={() => setDeleteStep('confirmation')}
                 >
                   <Text style={[styles.deleteModalButtonText, { color: colors.text }]}>Back</Text>
                 </Pressable>
                 <Pressable
                   style={[
-                    styles.deleteModalButton, 
-                    { 
+                    styles.deleteModalButton,
+                    {
                       backgroundColor: deletePassword.length > 0 ? colors.error : colors.textMuted,
                       opacity: deletePassword.length > 0 ? 1 : 0.5
                     }
@@ -595,6 +655,7 @@ export default function SettingsScreen() {
               </Text>
             </View>
           )}
+          </View>
         </View>
       </Modal>
 
@@ -768,6 +829,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  multiplePropertiesContainer: {
+    marginTop: 12,
+  },
+  propertiesCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  propertiesList: {
+    gap: 8,
+  },
+  propertyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  mainListingBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mainListingBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
   tourPropertyInfo: {
     flex: 1,
     flexDirection: 'row',
@@ -881,9 +970,18 @@ const styles = StyleSheet.create({
   requestTime: {
     fontSize: 11,
   },
-  modalBackdrop: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   languageRight: {
     flexDirection: 'row',
@@ -897,11 +995,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   languageModal: {
-    backgroundColor: 'white',
-    margin: 20,
+    width: '90%',
+    maxWidth: 400,
     borderRadius: 20,
     padding: 20,
     maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 2,
   },
   languageModalTitle: {
     fontSize: 20,
@@ -950,80 +1054,105 @@ const styles = StyleSheet.create({
     height: 0,
   },
   deleteModal: {
-    backgroundColor: 'white',
-    margin: 20,
-    borderRadius: 20,
-    padding: 24,
-    maxHeight: '80%',
-    justifyContent: 'center',
+    width: '90%',
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 28,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+    zIndex: 2,
   },
   deleteModalHeader: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
   },
   deleteModalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '700',
     textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 20,
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
   deleteModalSubtitle: {
-    fontSize: 16,
+    fontSize: 17,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
+    fontWeight: '400',
   },
   deleteModalWarnings: {
-    marginBottom: 24,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#EF4444',
+    marginBottom: 28,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    borderLeftWidth: 5,
+    borderWidth: 1,
   },
   warningText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 4,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   deleteModalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
+    marginTop: 8,
   },
   deleteModalButton: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 14,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   deleteModalButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   passwordInput: {
     borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    marginBottom: 24,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 17,
+    marginBottom: 28,
+    backgroundColor: '#F9FAFB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   deleteProcessingContainer: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 48,
+    paddingHorizontal: 20,
   },
   deleteProcessingText: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '600',
-    marginTop: 16,
+    marginTop: 20,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   deleteProcessingSubtext: {
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 15,
+    marginTop: 12,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    fontWeight: '400',
   },
 });
