@@ -276,6 +276,11 @@ export const translations = {
     'unableToCheckAccountStatus': 'Unable to check account status. Please try again.',
     'failedToDeleteAccount': 'Failed to delete account. Please try again.',
     'properties': 'Properties',
+    'showingListings': 'Showing {count} listings',
+    'filteredFrom': ' (filtered from {total})',
+    'listingsHidden': '{count} listings hidden - you already have tour requests for them',
+    'noMorePropertiesAvailable': 'No More Properties Available',
+    'allPropertiesRequested': 'Great news! You\'ve already requested tours for all available properties.',
   },
 
   es: {
@@ -554,6 +559,11 @@ export const translations = {
     'unableToCheckAccountStatus': 'No se pudo verificar el estado de la cuenta. Por favor intenta de nuevo.',
     'failedToDeleteAccount': 'Error al eliminar la cuenta. Por favor intenta de nuevo.',
     'properties': 'Propiedades',
+    'showingListings': 'Mostrando {count} propiedades',
+    'filteredFrom': ' (filtrado de {total})',
+    'listingsHidden': '{count} propiedades ocultas - ya tienes solicitudes de visita para ellas',
+    'noMorePropertiesAvailable': 'No Hay Más Propiedades Disponibles',
+    'allPropertiesRequested': '¡Buenas noticias! Ya has solicitado visitas para todas las propiedades disponibles.',
   },
 
   zh: {
@@ -832,6 +842,11 @@ export const translations = {
     'unableToCheckAccountStatus': '无法检查账户状态。请重试。',
     'failedToDeleteAccount': '删除账户失败。请重试。',
     'properties': '房产',
+    'showingListings': '显示 {count} 个房源',
+    'filteredFrom': '（从 {total} 个中筛选）',
+    'listingsHidden': '{count} 个房源已隐藏 - 您已经为它们申请了看房',
+    'noMorePropertiesAvailable': '没有更多可用房产',
+    'allPropertiesRequested': '好消息！您已经为所有可用房产申请了看房。',
   },
 
   fr: {
@@ -1110,6 +1125,11 @@ export const translations = {
     'unableToCheckAccountStatus': 'Impossible de vérifier l\'état du compte. Veuillez réessayer.',
     'failedToDeleteAccount': 'Échec de la suppression du compte. Veuillez réessayer.',
     'properties': 'Propriétés',
+    'showingListings': 'Affichage de {count} annonces',
+    'filteredFrom': ' (filtré sur {total})',
+    'listingsHidden': '{count} annonces masquées - vous avez déjà des demandes de visite pour elles',
+    'noMorePropertiesAvailable': 'Plus de Propriétés Disponibles',
+    'allPropertiesRequested': 'Bonne nouvelle ! Vous avez déjà demandé des visites pour toutes les propriétés disponibles.',
   },
 
   pt: {
@@ -1390,6 +1410,11 @@ export const translations = {
     'unableToCheckAccountStatus': 'Não foi possível verificar o status da conta. Tente novamente.',
     'failedToDeleteAccount': 'Falha ao excluir a conta. Tente novamente.',
     'properties': 'Propriedades',
+    'showingListings': 'Mostrando {count} anúncios',
+    'filteredFrom': ' (filtrado de {total})',
+    'listingsHidden': '{count} anúncios ocultos - você já tem solicitações de visita para eles',
+    'noMorePropertiesAvailable': 'Não Há Mais Propriedades Disponíveis',
+    'allPropertiesRequested': 'Boas notícias! Você já solicitou visitas para todas as propriedades disponíveis.',
   },
 
   hi: {
@@ -1670,6 +1695,11 @@ export const translations = {
     'unableToCheckAccountStatus': 'खाता स्थिति जांचने में असमर्थ। कृपया फिर से प्रयास करें।',
     'failedToDeleteAccount': 'खाता हटाने में विफल। कृपया फिर से प्रयास करें।',
     'properties': 'संपत्तियां',
+    'showingListings': '{count} लिस्टिंग दिखा रहा है',
+    'filteredFrom': ' ({total} से फ़िल्टर किया गया)',
+    'listingsHidden': '{count} लिस्टिंग छुपी हुई - आपके पास पहले से ही उनके लिए टूर अनुरोध हैं',
+    'noMorePropertiesAvailable': 'कोई और संपत्तियां उपलब्ध नहीं',
+    'allPropertiesRequested': 'बड़ी खबर! आपने पहले ही सभी उपलब्ध संपत्तियों के लिए टूर का अनुरोध किया है।',
   },
 
   he: {
@@ -1693,6 +1723,7 @@ export const translations = {
     'featureComingSoon': 'פיצור מתקדם',
     'tourRequestFunctionalitySoon': 'פונקציית הזמנת סיור תישאר בתור פיצור מתקדם.',
     'gotIt': 'הבנתי',
+    'properties': 'נכסים',
 
     // Tour related
     'requestTour': 'בקש סיור',
@@ -1940,5 +1971,14 @@ export const translations = {
     'accountDeletedMessage': 'החשבון שלך נמחק בהצלחה. כל הנתונים שלך הוסרו.',
     'deleteAccount': 'מחק חשבון',
     'enterPassword': 'הכנס את הסיסמה שלך',
+
+    // Additional error messages
+    'unableToCheckAccountStatus': 'לא ניתן לבדוק את מצב החשבון. אנא נסה שוב.',
+    'failedToDeleteAccount': 'מחיקת החשבון נכשלה. אנא נסה שוב.',
+    'showingListings': 'מציג {count} רשימות',
+    'filteredFrom': ' (מסונן מ-{total})',
+    'listingsHidden': '{count} רשימות מוסתרות - כבר יש לך בקשות סיור עבורן',
+    'noMorePropertiesAvailable': 'אין עוד נכסים זמינים',
+    'allPropertiesRequested': 'חדשות טובות! כבר ביקשת סיורים לכל הנכסים הזמינים.',
   },
 };

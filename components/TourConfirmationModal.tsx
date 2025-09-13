@@ -1279,14 +1279,14 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                     {/* Results count and info */}
                     <View style={styles.resultsContainer}>
                       <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-                        Showing {filteredListings.length} listings
-                        {availableListings.length !== filteredListings.length && ` (filtered from ${availableListings.length})`}
+                        {t('showingListings').replace('{count}', filteredListings.length.toString())}
+                        {availableListings.length !== filteredListings.length && t('filteredFrom').replace('{total}', availableListings.length.toString())}
                       </Text>
                       {alreadyRequestedListingIds.length > 0 && (
                         <View style={[styles.infoBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
                           <Ionicons name="information-circle" size={16} color={colors.primary} />
                           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                            {alreadyRequestedListingIds.length} listings hidden - you already have tour requests for them
+                            {t('listingsHidden').replace('{count}', alreadyRequestedListingIds.length.toString())}
                           </Text>
                         </View>
                       )}
@@ -1354,10 +1354,10 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                   <View style={styles.noListingsContainer}>
                     <Text style={styles.noListingsEmoji}>🏠</Text>
                     <Text style={[styles.noListingsTitle, { color: colors.text }]}>
-                      No More Properties Available
+                      {t('noMorePropertiesAvailable')}
                     </Text>
                     <Text style={[styles.noListingsText, { color: colors.textSecondary }]}>
-                      Great news! You've already requested tours for all available properties.
+                      {t('allPropertiesRequested')}
                     </Text>
                   </View>
                 )}
