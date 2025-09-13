@@ -40,7 +40,7 @@ const attractionPins = [
   { id: 'lansdowne-street', title: 'Lansdowne Street Clubs', lat: 42.3465, lng: -71.0975, type: 'nightlife', icon: 'wine' }
 ];
 
-// Get marker color based on attraction type - simplified colors
+// Get marker color based on attraction type - all attractions now in blue
 function getAttractionColor(type: string) {
   switch (type) {
     case 'sports': return '#FF4500'; // Orange
@@ -392,7 +392,12 @@ const ListingsMapView = React.memo(function ListingsMapView({ hideHeader = false
         visible={showFilterModal}
         onRequestClose={() => setShowFilterModal(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowFilterModal(false)} />
+        <Pressable
+          style={[styles.modalBackdrop, {
+            backgroundColor: themeMode === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
+          }]}
+          onPress={() => setShowFilterModal(false)}
+        />
         <View style={[styles.filterModalContent, { backgroundColor: colors.surface }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -423,7 +428,12 @@ const ListingsMapView = React.memo(function ListingsMapView({ hideHeader = false
         visible={showVisibilityModal}
         onRequestClose={() => setShowVisibilityModal(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowVisibilityModal(false)} />
+        <Pressable
+          style={[styles.modalBackdrop, {
+            backgroundColor: themeMode === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
+          }]}
+          onPress={() => setShowVisibilityModal(false)}
+        />
         <View style={[styles.visibilityModalContent, { backgroundColor: colors.surface }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
@@ -497,8 +507,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   // Header styles
   header: {

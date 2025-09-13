@@ -470,10 +470,12 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowLanguageModal(false)}
       >
         <View style={[styles.modalOverlay, {
-          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)'
+          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
         }]}>
           <Pressable
-            style={styles.modalBackdrop}
+            style={[styles.modalBackdrop, {
+              backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
+            }]}
             onPress={() => setShowLanguageModal(false)}
           />
           <View style={[styles.languageModal, { backgroundColor: colors.surface }]}>
@@ -533,10 +535,12 @@ export default function SettingsScreen() {
         }}
       >
         <View style={[styles.modalOverlay, {
-          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)'
+          backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
         }]}>
           <Pressable
-            style={styles.modalBackdrop}
+            style={[styles.modalBackdrop, {
+              backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.6)'
+            }]}
             onPress={() => {
               if (!isDeleting) {
                 setShowDeleteModal(false);

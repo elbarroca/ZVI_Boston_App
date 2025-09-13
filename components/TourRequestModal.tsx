@@ -124,11 +124,6 @@ export default function TourRequestSummaryModal({ isVisible, onClose, tourDetail
             <Ionicons name="checkmark-circle-outline" size={28} color="#10B981" />
             <Text style={[styles.modalTitle, { color: colors.text }]}>{t('tourRequestConfirmed')}</Text>
           </View>
-          <Pressable onPress={() => {
-            onClose();
-          }}>
-            <Ionicons name="close" size={24} color={colors.textSecondary} />
-          </Pressable>
         </View>
 
         <ScrollView

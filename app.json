@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ExpoSupabaseStarter",
-    "slug": "zentro",
+    "slug": "zvi",
     "scheme": "com.zentro.studenthousing",
     "version": "1.0.0",
     "orientation": "default",
@@ -15,7 +15,8 @@
       "bundleIdentifier": "com.zentro.studenthousing",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby listings on the map.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby listings on the map."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to show nearby listings on the map.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "AIzaSyABhlc_Vw3SxPo1lI2SuwoLy_M31gYmgUQ"
@@ -99,7 +100,6 @@
           "locationAlwaysAndWhenInUsePermission": "This app uses location to show nearby listings on the map."
         }
       ],
-      "expo-web-browser",
       "expo-audio",
       "expo-video",
       "expo-apple-authentication"

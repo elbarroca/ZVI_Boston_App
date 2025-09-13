@@ -97,16 +97,20 @@ export const signInWithGoogle = async () => {
   }
 };
 
-// Apple Sign-In function
+// Apple Sign-In function with enhanced iOS experience
 export const signInWithApple = async () => {
   try {
-    // Check if Apple authentication is available
+    console.log('🍎 Starting Apple Sign In process...');
+
+    // Check if Apple authentication is available (iOS only)
     const isAvailable = await AppleAuthentication.isAvailableAsync();
     if (!isAvailable) {
-      throw new Error('Apple authentication is not available on this device');
+      throw new Error('Apple Sign In is not available on this device. Make sure you\'re running on iOS.');
     }
 
-    // Request Apple authentication
+    console.log('✅ Apple Sign In available, requesting credentials...');
+
+    // Request Apple authentication with optimized iOS experience
     const credential = await AppleAuthentication.signInAsync({
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -114,42 +118,98 @@ export const signInWithApple = async () => {
       ],
     });
 
+    if (!credential.identityToken) {
+      throw new Error('No identity token received from Apple. Please try again.');
+    }
+
+    console.log('✅ Apple credentials received, signing in with Supabase...');
+
     // Sign in with Supabase using the Apple token
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: 'apple',
-      token: credential.identityToken!,
+      token: credential.identityToken,
     });
 
     if (error) {
-      throw error;
+      console.error('❌ Supabase Apple auth error:', error);
+      throw new Error(`Authentication failed: ${error.message}`);
     }
 
-    // If we have user data from Apple but no email in Supabase, update the profile
-    if (credential.email && data.user && !data.user.email) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: credential.email,
-        data: {
-          full_name: credential.fullName ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim() : null,
-        }
-      });
+    console.log('✅ Supabase authentication successful');
 
-      if (updateError) {
-        console.warn('Error updating user profile with Apple data:', updateError);
+    // Enhanced user profile update with better error handling
+    if (credential.email && data.user) {
+      try {
+        const updateData: any = { email: credential.email };
+
+        // Build full name from Apple credential
+        if (credential.fullName) {
+          const givenName = credential.fullName.givenName || '';
+          const familyName = credential.fullName.familyName || '';
+          const fullName = `${givenName} ${familyName}`.trim();
+
+          if (fullName) {
+            updateData.data = { full_name: fullName };
+          }
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser(updateData);
+
+        if (updateError) {
+          console.warn('⚠️ Could not update user profile with Apple data:', updateError);
+          // Don't throw here - profile update is not critical for sign-in success
+        } else {
+          console.log('✅ User profile updated with Apple data');
+        }
+      } catch (profileError) {
+        console.warn('⚠️ Profile update failed, but authentication succeeded:', profileError);
       }
     }
 
+    console.log('🎉 Apple Sign In complete, navigating to main app...');
+
     // Navigate to main app on successful authentication
     router.replace('/(tabs)');
-    
-    return { success: true, user: data.user, session: data.session };
+
+    return {
+      success: true,
+      user: data.user,
+      session: data.session,
+      isNewUser: !data.user?.last_sign_in_at // Rough indication of new user
+    };
+
   } catch (error: any) {
+    console.error('❌ Apple Sign In error:', error);
+
+    // Handle specific Apple authentication errors with better messaging
     if (error.code === 'ERR_REQUEST_CANCELED') {
-      // User cancelled the Apple Sign-In flow
-      return null;
-    } else {
-      Alert.alert('Apple Sign-In Error', error.message || 'An unexpected error occurred. Please try again.');
+      console.log('👤 User cancelled Apple Sign In');
       return null;
     }
+
+    if (error.code === 'ERR_APPLE_AUTHENTICATION') {
+      Alert.alert(
+        'Apple Sign In Failed',
+        'Unable to authenticate with Apple. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+      return null;
+    }
+
+    if (error.code === 'ERR_INVALID_RESPONSE') {
+      Alert.alert(
+        'Authentication Error',
+        'Received an invalid response from Apple. Please try again.',
+        [{ text: 'OK' }]
+      );
+      return null;
+    }
+
+    // Generic error handling
+    const errorMessage = error.message || 'An unexpected error occurred during Apple Sign In.';
+    Alert.alert('Apple Sign In Error', errorMessage);
+
+    return null;
   }
 };
 

@@ -314,7 +314,7 @@ export const useLazyImage = (imageUrl: string, threshold: number = 0.1, priority
 };
 
 // Persistent Local Image Cache System
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 class PersistentImageCache {
   private cacheDirectory: string;

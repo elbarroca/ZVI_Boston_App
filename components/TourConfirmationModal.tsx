@@ -760,12 +760,12 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
               <View style={[styles.stepNumber, { backgroundColor: Object.keys(selectedDates).length > 0 ? colors.primary : colors.border }]}>
                 <Text style={[styles.stepNumberText, { color: Object.keys(selectedDates).length > 0 ? 'white' : colors.textMuted }]}>1</Text>
               </View>
-              <Text style={[styles.stepTitle, { color: colors.text }]}>📅 Select up to 3 Days</Text>
+              <Text style={[styles.stepTitle, { color: colors.text }]}>{t('selectUpTo3Days')}</Text>
             </View>
             <View style={styles.infoBox}>
               <Ionicons name="information-circle" size={16} color={colors.primary} />
               <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                Choose dates that work for you. We'll confirm availability within 24 hours and add confirmed tours to your calendar.
+                {t('choosePeriodAndTimes')}
               </Text>
             </View>
             <View style={[styles.calendarContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -867,16 +867,15 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                 <View style={[styles.stepNumber, { backgroundColor: selectedDaySlots.length > 0 ? colors.primary : colors.border }]}>
                   <Text style={[styles.stepNumberText, { color: selectedDaySlots.length > 0 ? 'white' : colors.textMuted }]}>2</Text>
                 </View>
-                <Text style={[styles.stepTitle, { color: colors.text }]}>⏰ Choose Times for Each Day</Text>
+                <Text style={[styles.stepTitle, { color: colors.text }]}>⏰ {t('selectTime')}</Text>
               </View>
               <Text style={[styles.stepDescription, { color: colors.textSecondary }]}>
-                Choose morning or afternoon for each day, then select your preferred time slots. We'll contact you to confirm availability.
+                {t('choosePeriodAndTimes')}
               </Text>
               <View style={styles.rulesBox}>
                 <Ionicons name="shield-checkmark" size={16} color={colors.primary} />
                 <Text style={[styles.rulesText, { color: colors.textSecondary }]}>
-                  <Text style={{ fontWeight: '600' }}>Tour Rules:</Text> You can select up to 3 time slots per day, maximum 3 days total.
-                  Priority ranking helps us know your top choices. We'll confirm within 24 hours.
+                  <Text style={{ fontWeight: '600' }}>{t('tourRules')}:</Text> {t('tourRulesDescription')}
                 </Text>
               </View>
 
@@ -1058,7 +1057,7 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
             <View style={styles.responseInfoBox}>
               <Ionicons name="time" size={16} color={colors.primary} />
               <Text style={[styles.responseInfoText, { color: colors.textSecondary }]}>
-                We'll respond within 24 hours to confirm your tour times. Confirmed tours will be automatically added to your calendar.
+                {t('responseInfoMessage')}
               </Text>
             </View>
             <View style={styles.phoneInputContainer}>
@@ -1105,12 +1104,12 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
           {/* Multiple Listing Selection Section */}
           <View style={[styles.section, styles.multipleListingSection]}>
             <View style={styles.sectionTitleContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>🏠 Property Selection</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>🏠 {t('propertyType')}</Text>
             </View>
             
 
             <View style={styles.tourOptionsContainer}>
-              <Text style={[styles.tourOptionsTitle, { color: colors.text }]}>Choose Your Tour Type</Text>
+              <Text style={[styles.tourOptionsTitle, { color: colors.text }]}>{t('chooseYourTourType')}</Text>
               <View style={styles.multipleListingToggle}>
                 <Pressable
                   style={[
@@ -1141,13 +1140,13 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                         styles.toggleButtonTitle,
                         { color: !showMultipleListings ? 'white' : colors.text }
                       ]}>
-                        Single Property
+                        {t('singleProperty')}
                       </Text>
                       <Text style={[
                         styles.toggleButtonSubtitle,
                         { color: !showMultipleListings ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
                       ]}>
-                        Focus on one perfect home
+                        {t('focusOnOneHome')}
                       </Text>
                     </View>
                   </View>
@@ -1184,13 +1183,13 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                         styles.toggleButtonTitle,
                         { color: showMultipleListings ? 'white' : colors.text }
                       ]}>
-                        Multiple Properties
+                        {t('multipleProperties')}
                       </Text>
                       <Text style={[
                         styles.toggleButtonSubtitle,
                         { color: showMultipleListings ? 'rgba(255,255,255,0.8)' : colors.textSecondary }
                       ]}>
-                        Compare & explore options
+                        {t('compareAndExplore')}
                       </Text>
                     </View>
                   </View>
@@ -1209,7 +1208,7 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
                     <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-                      Finding great properties for you...
+                      {t('findingProperties')}
                     </Text>
                   </View>
                 ) : filteredListings.length > 0 ? (
@@ -1221,10 +1220,10 @@ export default function TourConfirmationModal({ isVisible, onClose, onSuccess, l
                         </View>
                         <View style={styles.selectionTextContainer}>
                           <Text style={[styles.selectionTitle, { color: colors.text }]}>
-                            Choose Additional Properties
+                            {t('chooseAdditionalProperties')}
                           </Text>
                           <Text style={[styles.selectionDescription, { color: colors.textSecondary }]}>
-                            Select up to 4 more homes to explore
+                            {t('selectUpTo4More')}
                           </Text>
                         </View>
                       </View>

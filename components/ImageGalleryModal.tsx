@@ -2,11 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, Pressable, FlatList, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useOrientation } from '@/hooks/useOrientation';
 import { PanGestureHandler, PinchGestureHandler, TapGestureHandler, State } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -80,8 +79,13 @@ const ZoomableImage = ({ item, imageStyle }: {
 const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ visible, media, initialIndex, onClose }) => {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const flatListRef = useRef<FlatList>(null);
-    const videoRef = useRef<Video>(null);
     const orientation = useOrientation();
+
+    // Create video player for video items
+    const videoPlayer = useVideoPlayer(media.find(item => item.type === 'video')?.url || '', player => {
+        player.loop = false;
+        player.muted = false;
+    });
 
     // Debug logging
     useEffect(() => {
@@ -157,13 +161,13 @@ const ImageGalleryModal: React.FC<ImageGalleryModalProps> = ({ visible, media, i
         if (item.type === 'video') {
             return (
                 <View style={containerStyle}>
-                    <Video
-                        ref={videoRef}
-                        source={{ uri: item.url }}
+                    <VideoView
+                        player={videoPlayer}
                         style={getImageStyle()}
-                        resizeMode={ResizeMode.CONTAIN}
-                        useNativeControls
-                        shouldPlay={false}
+                        contentFit="contain"
+                        allowsFullscreen={false}
+                        allowsPictureInPicture={false}
+                        nativeControls={true}
                     />
                 </View>
             );

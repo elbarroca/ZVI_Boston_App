@@ -241,6 +241,21 @@ export const translations = {
     'priceNotAvailable': 'Price not available',
     'locationNotSpecified': 'Location not specified',
 
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 Select up to 3 Days',
+    'choosePeriodAndTimes': 'Choose morning or afternoon for each day, then select your preferred time slots. We\'ll contact you to confirm availability.',
+    'singleProperty': 'Single Property',
+    'focusOnOneHome': 'Focus on one perfect home',
+    'multipleProperties': 'Multiple Properties',
+    'compareAndExplore': 'Compare & explore options',
+    'findingProperties': 'Finding great properties for you...',
+    'chooseAdditionalProperties': 'Choose Additional Properties',
+    'selectUpTo4More': 'Select up to 4 more homes to explore',
+    'tourRules': 'Tour Rules',
+    'tourRulesDescription': 'You can select up to 3 time slots per day, maximum 3 days total. Priority ranking helps us know your top choices. We\'ll confirm within 24 hours.',
+    'chooseYourTourType': 'Choose Your Tour Type',
+    'responseInfoMessage': 'We\'ll respond within 24 hours to confirm your tour times. Confirmed tours will be automatically added to your calendar.',
+
     // Settings
     'contactSupportMessage': 'Contact us at support@yourapp.com for assistance.',
     'cannotDeleteAccount': 'Cannot Delete Account',
@@ -502,6 +517,21 @@ export const translations = {
     'untitledProperty': 'Propiedad Sin Título',
     'priceNotAvailable': 'Precio no disponible',
     'locationNotSpecified': 'Ubicación no especificada',
+
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 Selecciona hasta 3 días',
+    'choosePeriodAndTimes': 'Elige mañana o tarde para cada día, luego selecciona tus horarios preferidos. Nos pondremos en contacto para confirmar disponibilidad.',
+    'singleProperty': 'Propiedad Única',
+    'focusOnOneHome': 'Concéntrate en un hogar perfecto',
+    'multipleProperties': 'Múltiples Propiedades',
+    'compareAndExplore': 'Compara y explora opciones',
+    'findingProperties': 'Encontrando grandes propiedades para ti...',
+    'chooseAdditionalProperties': 'Elige Propiedades Adicionales',
+    'selectUpTo4More': 'Selecciona hasta 4 hogares más para explorar',
+    'tourRules': 'Reglas de Visita',
+    'tourRulesDescription': 'Puedes seleccionar hasta 3 horarios por día, máximo 3 días en total. La clasificación por prioridad nos ayuda a conocer tus mejores opciones. Confirmaremos dentro de 24 horas.',
+    'chooseYourTourType': 'Elige Tu Tipo de Visita',
+    'responseInfoMessage': 'Responderemos dentro de 24 horas para confirmar tus horarios de visita. Las visitas confirmadas se agregarán automáticamente a tu calendario.',
 
     // Settings
     'helpSupport': 'Ayuda y Soporte',
@@ -767,6 +797,21 @@ export const translations = {
     'priceNotAvailable': '价格不可用',
     'locationNotSpecified': '未指定位置',
 
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 最多选择3天',
+    'choosePeriodAndTimes': '为每一天选择上午或下午，然后选择您偏好的时间段。我们将联系您确认可用性。',
+    'singleProperty': '单个房产',
+    'focusOnOneHome': '专注于一个完美的家',
+    'multipleProperties': '多个房产',
+    'compareAndExplore': '比较并探索选项',
+    'findingProperties': '为您寻找优质房产...',
+    'chooseAdditionalProperties': '选择额外房产',
+    'selectUpTo4More': '最多再选择4个房屋探索',
+    'tourRules': '看房规则',
+    'tourRulesDescription': '您每天最多可以选择3个时间段，总共最多3天。优先级排序帮助我们了解您的首选。我们将在24小时内确认。',
+    'chooseYourTourType': '选择您的看房类型',
+    'responseInfoMessage': '我们将在24小时内回复确认您的看房时间。确认的看房将自动添加到您的日历中。',
+
     // Settings
     'contactSupportMessage': '联系 support@yourapp.com 获取帮助。',
     'cannotDeleteAccount': '无法删除账户',
@@ -1029,6 +1074,21 @@ export const translations = {
     'untitledProperty': 'Propriété Sans Titre',
     'priceNotAvailable': 'Prix non disponible',
     'locationNotSpecified': 'Emplacement non spécifié',
+
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 Sélectionnez jusqu\'à 3 jours',
+    'choosePeriodAndTimes': 'Choisissez matin ou après-midi pour chaque jour, puis sélectionnez vos créneaux horaires préférés. Nous vous contacterons pour confirmer la disponibilité.',
+    'singleProperty': 'Propriété Unique',
+    'focusOnOneHome': 'Concentrez-vous sur une maison parfaite',
+    'multipleProperties': 'Propriétés Multiples',
+    'compareAndExplore': 'Comparez et explorez les options',
+    'findingProperties': 'Trouver de superbes propriétés pour vous...',
+    'chooseAdditionalProperties': 'Choisir des Propriétés Supplémentaires',
+    'selectUpTo4More': 'Sélectionnez jusqu\'à 4 maisons de plus à explorer',
+    'tourRules': 'Règles de Visite',
+    'tourRulesDescription': 'Vous pouvez sélectionner jusqu\'à 3 créneaux horaires par jour, maximum 3 jours au total. Le classement par priorité nous aide à connaître vos meilleurs choix. Nous confirmerons dans les 24 heures.',
+    'chooseYourTourType': 'Choisissez Votre Type de Visite',
+    'responseInfoMessage': 'Nous répondrons dans les 24 heures pour confirmer vos horaires de visite. Les visites confirmées seront automatiquement ajoutées à votre calendrier.',
 
     // Settings
     'contactSupportMessage': 'Contactez-nous à support@yourapp.com pour obtenir de l\'aide.',
@@ -1295,6 +1355,21 @@ export const translations = {
     'priceNotAvailable': 'Preço não disponível',
     'locationNotSpecified': 'Localização não especificada',
 
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 Selecione até 3 dias',
+    'choosePeriodAndTimes': 'Escolha manhã ou tarde para cada dia, depois selecione seus horários preferidos. Entraremos em contato para confirmar disponibilidade.',
+    'singleProperty': 'Propriedade Única',
+    'focusOnOneHome': 'Concentre-se em um lar perfeito',
+    'multipleProperties': 'Múltiplas Propriedades',
+    'compareAndExplore': 'Compare e explore opções',
+    'findingProperties': 'Encontrando ótimas propriedades para você...',
+    'chooseAdditionalProperties': 'Escolha Propriedades Adicionais',
+    'selectUpTo4More': 'Selecione até 4 lares a mais para explorar',
+    'tourRules': 'Regras da Visita',
+    'tourRulesDescription': 'Você pode selecionar até 3 horários por dia, máximo 3 dias no total. A classificação por prioridade nos ajuda a conhecer suas melhores opções. Confirmaremos dentro de 24 horas.',
+    'chooseYourTourType': 'Escolha Seu Tipo de Visita',
+    'responseInfoMessage': 'Responderemos dentro de 24 horas para confirmar seus horários de visita. As visitas confirmadas serão automaticamente adicionadas ao seu calendário.',
+
     // Settings
     'contactSupportMessage': 'Entre em contato conosco em support@yourapp.com para ajuda.',
     'cannotDeleteAccount': 'Não é Possível Excluir a Conta',
@@ -1559,6 +1634,21 @@ export const translations = {
     'untitledProperty': 'शीर्षक रहित संपत्ति',
     'priceNotAvailable': 'कीमत उपलब्ध नहीं है',
     'locationNotSpecified': 'स्थान निर्दिष्ट नहीं किया गया',
+
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 अधिकतम 3 दिन चुनें',
+    'choosePeriodAndTimes': 'प्रत्येक दिन के लिए सुबह या शाम चुनें, फिर अपने पसंदीदा समय स्लॉट चुनें। हम उपलब्धता की पुष्टि करने के लिए आपसे संपर्क करेंगे।',
+    'singleProperty': 'एकल संपत्ति',
+    'focusOnOneHome': 'एक परफेक्ट घर पर फोकस करें',
+    'multipleProperties': 'एकाधिक संपत्तियां',
+    'compareAndExplore': 'तुलना करें और विकल्पों का पता लगाएं',
+    'findingProperties': 'आपके लिए बढ़िया संपत्तियां ढूंढ रहे हैं...',
+    'chooseAdditionalProperties': 'अतिरिक्त संपत्तियां चुनें',
+    'selectUpTo4More': 'अन्वेषण के लिए अधिकतम 4 घर और चुनें',
+    'tourRules': 'टूर नियम',
+    'tourRulesDescription': 'आप प्रति दिन अधिकतम 3 समय स्लॉट चुन सकते हैं, कुल अधिकतम 3 दिन। प्राथमिकता रैंकिंग हमें आपकी सर्वोत्तम पसंद जानने में मदद करती है। हम 24 घंटों के भीतर पुष्टि करेंगे।',
+    'chooseYourTourType': 'अपना टूर प्रकार चुनें',
+    'responseInfoMessage': 'हम आपके टूर समय की पुष्टि करने के लिए 24 घंटों के भीतर जवाब देंगे। पुष्टि किए गए टूर स्वचालित रूप से आपके कैलेंडर में जोड़ दिए जाएंगे।',
 
     // Settings
     'contactSupportMessage': 'मदद के लिए हमें support@yourapp.com पर संपर्क करें।',
@@ -1826,6 +1916,21 @@ export const translations = {
     'untitledProperty': 'נכס ללא כותרת',
     'priceNotAvailable': 'מחיר לא זמין',
     'locationNotSpecified': 'מיקום לא צוין',
+
+    // Additional tour modal translations
+    'selectUpTo3Days': '📅 בחר עד 3 ימים',
+    'choosePeriodAndTimes': 'בחר בוקר או ערב לכל יום, ואז בחר את חלונות הזמן המועדפים עליך. נחזור אליך לאישור זמינות.',
+    'singleProperty': 'נכס יחיד',
+    'focusOnOneHome': 'התמקד בבית מושלם אחד',
+    'multipleProperties': 'נכסים מרובים',
+    'compareAndExplore': 'השווה וחקור אפשרויות',
+    'findingProperties': 'מוצא נכסים נהדרים בשבילך...',
+    'chooseAdditionalProperties': 'בחר נכסים נוספים',
+    'selectUpTo4More': 'בחר עד 4 בתים נוספים לחקירה',
+    'tourRules': 'כללי סיור',
+    'tourRulesDescription': 'ניתן לבחור עד 3 חלונות זמן ליום, מקסימום 3 ימים בסך הכל. דירוג העדיפות עוזר לנו לדעת את הבחירות הטובות ביותר שלך. נאשר תוך 24 שעות.',
+    'chooseYourTourType': 'בחר את סוג הסיור שלך',
+    'responseInfoMessage': 'נגיב תוך 24 שעות לאישור זמני הסיור שלך. סיורים שאושרו יתווספו אוטומטית ליומן שלך.',
 
     // Settings
     'contactSupportMessage': 'צור איתנו קשר ב-support@yourapp.com לקבלת עזרה.',
